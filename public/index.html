@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>60秒剪贴板</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="mode-switch">
+      <button id="mode-send" class="mode-tab active" type="button">发送</button>
+      <button id="mode-receive" class="mode-tab" type="button">接收</button>
+    </section>
+
+    <section class="card compose-card">
+      <div id="send-result" class="hero-code hidden" aria-live="polite">
+        <p class="result-label">临时码</p>
+        <div class="code-panel prominent">
+          <strong id="share-code">------</strong>
+        </div>
+        <p id="countdown" class="hint centered"></p>
+      </div>
+
+      <div class="card-head">
+        <div>
+          <p class="section-kicker">Send</p>
+          <h2>发一段文本</h2>
+        </div>
+        <p class="meta">60 秒有效</p>
+      </div>
+
+      <label class="field">
+        <span class="field-label">文本</span>
+        <textarea id="clip-input" class="bar-input" placeholder="长按粘贴文本"></textarea>
+      </label>
+
+      <label class="mask-toggle">
+        <input id="mask-toggle" type="checkbox">
+        <span>加密显示</span>
+      </label>
+
+      <div class="actions">
+        <button id="send-button" class="primary" type="button">发送</button>
+      </div>
+    </section>
+
+    <section class="card receive-card hidden">
+      <div class="card-head">
+        <div>
+          <p class="section-kicker">Receive</p>
+          <h2>输入临时码</h2>
+        </div>
+        <p class="meta">一次性读取</p>
+      </div>
+
+      <label class="field">
+        <span class="field-label">6位临时码</span>
+        <div class="code-grid">
+          <input class="code-cell" maxlength="1" autocomplete="off">
+          <input class="code-cell" maxlength="1" autocomplete="off">
+          <input class="code-cell" maxlength="1" autocomplete="off">
+          <input class="code-cell" maxlength="1" autocomplete="off">
+          <input class="code-cell" maxlength="1" autocomplete="off">
+          <input class="code-cell" maxlength="1" autocomplete="off">
+        </div>
+      </label>
+
+      <div class="actions">
+        <button id="receive-button" class="primary" type="button">解密并复制</button>
+      </div>
+
+      <div id="receive-state" class="receive-state">
+        <p class="hint">输入完整 6 位码后，点击解密并复制。</p>
+      </div>
+
+      <div id="receive-result" class="result hidden">
+        <p class="result-label">内容</p>
+        <pre id="received-text"></pre>
+        <div class="actions compact">
+          <button id="copy-text-button" class="primary" type="button">再次复制内容</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="hero lower">
+      <p class="eyebrow">60 Seconds Clipboard</p>
+      <h1>60秒剪贴板</h1>
+      <p class="lede">一次性60秒，服务器加密，跨设备文本传输。</p>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
