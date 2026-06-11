@@ -34,6 +34,10 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/qr") {
+      return await handleQr(url, res);
+    }
+
     if (req.method === "POST" && url.pathname === "/api/clips") {
       return await handleCreateClip(req, res);
     }
@@ -136,6 +140,23 @@ async function handleConsumeClip(req, res) {
 
   store.delete(locator);
   return sendJson(res, 200, { consumed: true });
+}
+
+async function handleQr(url, res) {
+  const text = (url.searchParams.get("text") || "").trim();
+  if (!text) return sendJson(res, 400, { error: "text required" });
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&format=png&data=${encodeURIComponent(text)}`;
+  const response = await fetch(qrUrl);
+  if (!response.ok) {
+    return sendJson(res, 502, { error: "qr upstream failed" });
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  res.writeHead(200, {
+    "Content-Type": response.headers.get("content-type") || "image/png",
+    "Content-Length": buffer.length,
+    "Cache-Control": "no-store",
+  });
+  res.end(buffer);
 }
 
 function normalizeLocator(value) {

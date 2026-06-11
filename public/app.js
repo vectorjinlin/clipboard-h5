@@ -14,7 +14,7 @@ const receiveButton = document.getElementById("receive-button");
 const sendResult = document.getElementById("send-result");
 const shareCode = document.getElementById("share-code");
 const countdown = document.getElementById("countdown");
-const qrCanvas = document.getElementById("qr-canvas");
+const qrImage = document.getElementById("qr-image");
 const receiveState = document.getElementById("receive-state");
 const receiveResult = document.getElementById("receive-result");
 const receivedText = document.getElementById("received-text");
@@ -318,23 +318,11 @@ function spacedCode(code) {
 }
 
 function renderQr(code) {
-  if (!window.QRCode) {
-    qrCanvas.replaceWith(document.createTextNode("二维码库加载失败"));
-    return;
-  }
-  QRCode.toCanvas(qrCanvas, code, {
-    margin: 1,
-    width: 220,
-    color: {
-      dark: "#1d1d1d",
-      light: "#ffffff",
-    },
-  });
+  qrImage.src = `/api/qr?text=${encodeURIComponent(code)}`;
 }
 
 function clearQr() {
-  const context = qrCanvas.getContext("2d");
-  context.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+  qrImage.removeAttribute("src");
 }
 
 function randomChars(length) {
