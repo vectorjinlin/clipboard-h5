@@ -21,6 +21,7 @@ const receivedText = document.getElementById("received-text");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
 const scannerVideo = document.getElementById("scanner-video");
 const scannerPlaceholder = document.getElementById("scanner-placeholder");
+const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
 let scannerStream = null;
@@ -30,7 +31,16 @@ let barcodeDetector = null;
 bootstrap();
 
 function bootstrap() {
-  showSendView();
+  const presetCode = new URL(window.location.href).searchParams.get("code");
+  if (presetCode && normalizeScannedCode(presetCode).length === 6) {
+    showReceiveView();
+    showManualPanel();
+    fillCodeCells(presetCode);
+    setReceiveHint("已自动填入接收码，可直接点击解密并复制。");
+  } else {
+    showSendView();
+  }
+
   modeSend.addEventListener("click", showSendView);
   modeReceive.addEventListener("click", showReceiveView);
   manualTab.addEventListener("click", showManualPanel);
@@ -318,7 +328,8 @@ function spacedCode(code) {
 }
 
 function renderQr(code) {
-  qrImage.src = `/api/qr?text=${encodeURIComponent(code)}`;
+  const shareUrl = `${APP_ORIGIN}/?code=${encodeURIComponent(code)}`;
+  qrImage.src = `/api/qr?text=${encodeURIComponent(shareUrl)}`;
 }
 
 function clearQr() {
