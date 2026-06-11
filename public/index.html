@@ -15,7 +15,7 @@
 
     <section class="card compose-card">
       <div id="send-result" class="hero-code hidden" aria-live="polite">
-        <p class="result-label">临时码</p>
+        <p class="result-label">接收码</p>
         <div class="code-panel prominent">
           <strong id="share-code">------</strong>
         </div>
@@ -37,7 +37,7 @@
 
       <label class="mask-toggle">
         <input id="mask-toggle" type="checkbox">
-        <span>加密显示</span>
+        <span>隐藏文本</span>
       </label>
 
       <div class="actions">
@@ -49,13 +49,13 @@
       <div class="card-head">
         <div>
           <p class="section-kicker">Receive</p>
-          <h2>输入临时码</h2>
+          <h2>输入接收码</h2>
         </div>
-        <p class="meta">一次性读取</p>
+        <p class="meta">本地解密</p>
       </div>
 
       <label class="field">
-        <span class="field-label">6位临时码</span>
+        <span class="field-label">输入接收码</span>
         <div class="code-grid">
           <input class="code-cell" maxlength="1" autocomplete="off">
           <input class="code-cell" maxlength="1" autocomplete="off">
@@ -77,16 +77,14 @@
       <div id="receive-result" class="result hidden">
         <p class="result-label">内容</p>
         <pre id="received-text"></pre>
-        <div class="actions compact">
-          <button id="copy-text-button" class="primary" type="button">再次复制内容</button>
-        </div>
       </div>
     </section>
 
     <section class="hero lower">
       <p class="eyebrow">60 Seconds Clipboard</p>
       <h1>60秒剪贴板</h1>
-      <p class="lede">一次性60秒，服务器加密，跨设备文本传输。</p>
+      <p class="lede">一次性60秒，本地加密，跨设备文本传输。</p>
+      <p class="footer-note">Developed by @11u1uguru | Version 0.1.1</p>
     </section>
   </main>
 

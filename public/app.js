@@ -12,7 +12,6 @@ const receiveState = document.getElementById("receive-state");
 const receiveResult = document.getElementById("receive-result");
 const receiveButton = document.getElementById("receive-button");
 const receivedText = document.getElementById("received-text");
-const copyTextButton = document.getElementById("copy-text-button");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
 
 let countdownTimer = null;
@@ -30,12 +29,6 @@ function bootstrap() {
   receiveModeButton.addEventListener("click", showReceiveMode);
   sendButton.addEventListener("click", handleSend);
   receiveButton.addEventListener("click", handleReceive);
-  copyTextButton.addEventListener("click", async () => {
-    if (!receivedText.textContent) return;
-    const ok = await copyText(receivedText.textContent);
-    receiveState.classList.remove("hidden");
-    receiveState.innerHTML = `<p class="hint">${ok ? "内容已再次复制。" : "复制失败，请手动复制。"}<\/p>`;
-  });
   maskToggle.addEventListener("change", () => {
     input.classList.toggle("masked", maskToggle.checked);
   });
@@ -140,7 +133,7 @@ async function handleReceive() {
     receivedText.textContent = text;
     receiveResult.classList.remove("hidden");
     clearCodeCells();
-    setReceiveHint(copied ? "文本读取成功，已复制到本地剪贴板。" : "文本读取成功，但自动复制失败。");
+    setReceiveHint(copied ? "文本读取成功，已复制到本地剪贴板。" : "复制失败，请手动复制文本。");
   } catch (error) {
     setReceiveHint(error.message || "解密失败");
   }
@@ -158,7 +151,6 @@ function showReceiveMode() {
   receiveCard.classList.remove("hidden");
   sendModeButton.classList.remove("active");
   receiveModeButton.classList.add("active");
-  codeCells[0].focus();
 }
 
 function startCountdown(expiresAt) {
@@ -170,10 +162,10 @@ function startCountdown(expiresAt) {
     const ms = expiresAt - Date.now();
     if (ms <= 0) {
       clearInterval(countdownTimer);
-      countdown.textContent = "临时码已过期。";
+      countdown.textContent = "文本已销毁。";
       return;
     }
-    countdown.textContent = `${(ms / 1000).toFixed(1)} 秒后自动失效。`;
+    countdown.textContent = `${(ms / 1000).toFixed(1)} 秒后文本销毁。`;
   }
 }
 
@@ -185,7 +177,7 @@ function wireCodeCells() {
         codeCells[index + 1].focus();
       }
       if (getCodeValue().length === 6) {
-        setReceiveHint("临时码完整，可点击解密并复制。");
+        setReceiveHint("接收码完整，可点击解密并复制。");
       }
     });
 
@@ -222,7 +214,6 @@ function clearCodeCells() {
   codeCells.forEach((cell) => {
     cell.value = "";
   });
-  codeCells[0].focus();
 }
 
 function normalizeChar(value) {
