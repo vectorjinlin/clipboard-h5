@@ -8,54 +8,47 @@
 </head>
 <body>
   <main class="shell">
-    <section class="mode-switch">
-      <button id="mode-send" class="mode-tab active" type="button">发送</button>
-      <button id="mode-receive" class="mode-tab" type="button">接收</button>
+    <section class="top-switch">
+      <button id="mode-send" class="top-tab active" type="button">发送</button>
+      <button id="mode-receive" class="top-tab" type="button">接收</button>
     </section>
 
-    <section class="card compose-card">
-      <div id="send-result" class="hero-code hidden" aria-live="polite">
-        <p class="result-label">接收码</p>
-        <div class="code-panel prominent">
-          <strong id="share-code">------</strong>
-        </div>
-        <p id="countdown" class="hint centered"></p>
-      </div>
+    <section class="send-view">
+      <label class="block-label" for="clip-input">文本内容</label>
+      <textarea id="clip-input" class="text-box" placeholder="长按粘贴文本"></textarea>
 
-      <div class="card-head">
-        <div>
-          <p class="section-kicker">Send</p>
-          <h2>发一段文本</h2>
-        </div>
-        <p class="meta">60 秒有效</p>
-      </div>
-
-      <label class="field">
-        <span class="field-label">文本</span>
-        <textarea id="clip-input" class="bar-input" placeholder="长按粘贴文本"></textarea>
-      </label>
-
-      <label class="mask-toggle">
+      <label class="toggle-line">
         <input id="mask-toggle" type="checkbox">
         <span>隐藏文本</span>
       </label>
 
-      <div class="actions">
-        <button id="send-button" class="primary" type="button">发送</button>
-      </div>
+      <button id="send-button" class="main-button" type="button">生成接收码</button>
+
+      <section id="send-result" class="result-card hidden" aria-live="polite">
+        <div class="code-wrap">
+          <strong id="share-code">------</strong>
+          <p id="countdown" class="status-text"></p>
+        </div>
+
+        <div class="qr-divider">
+          <span>或扫码接收</span>
+        </div>
+
+        <div class="qr-panel">
+          <canvas id="qr-canvas" width="220" height="220"></canvas>
+          <p class="qr-caption">对方扫码后自动填入接收码</p>
+        </div>
+      </section>
     </section>
 
-    <section class="card receive-card hidden">
-      <div class="card-head">
-        <div>
-          <p class="section-kicker">Receive</p>
-          <h2>输入接收码</h2>
-        </div>
-        <p class="meta">本地解密</p>
-      </div>
+    <section class="receive-view hidden">
+      <section class="sub-switch">
+        <button id="manual-tab" class="sub-tab active" type="button">⌨ 手动输入</button>
+        <button id="scan-tab" class="sub-tab" type="button">◱ 扫码识别</button>
+      </section>
 
-      <label class="field">
-        <span class="field-label">输入接收码</span>
+      <section id="manual-panel">
+        <label class="block-label">输入 6 位接收码</label>
         <div class="code-grid">
           <input class="code-cell" maxlength="1" autocomplete="off">
           <input class="code-cell" maxlength="1" autocomplete="off">
@@ -64,30 +57,34 @@
           <input class="code-cell" maxlength="1" autocomplete="off">
           <input class="code-cell" maxlength="1" autocomplete="off">
         </div>
-      </label>
+      </section>
 
-      <div class="actions">
-        <button id="receive-button" class="primary" type="button">解密并复制</button>
-      </div>
+      <section id="scan-panel" class="hidden">
+        <div class="scan-box">
+          <video id="scanner-video" playsinline muted></video>
+          <div id="scanner-placeholder" class="scan-placeholder">点击“扫码识别”后调起摄像头</div>
+        </div>
+      </section>
+
+      <button id="receive-button" class="main-button" type="button">解密并复制</button>
 
       <div id="receive-state" class="receive-state">
-        <p class="hint">输入完整 6 位码后，点击解密并复制。</p>
+        <p class="status-text">输入完整接收码后，点击解密并复制。</p>
       </div>
 
-      <div id="receive-result" class="result hidden">
-        <p class="result-label">内容</p>
+      <section id="receive-result" class="result-card hidden">
         <pre id="received-text"></pre>
-      </div>
+      </section>
     </section>
 
-    <section class="hero lower">
-      <p class="eyebrow">60 Seconds Clipboard</p>
+    <footer class="footer">
       <h1>60秒剪贴板</h1>
-      <p class="lede">一次性60秒，本地加密，跨设备文本传输。</p>
-      <p class="footer-note">Developed by @11u1uguru | Version 0.1.1</p>
-    </section>
+      <p>一次性加密 · 跨设备传输 · 60 秒自动销毁</p>
+      <p>v0.2.0 · @11u1uguru</p>
+    </footer>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

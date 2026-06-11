@@ -1,43 +1,83 @@
-const composeCard = document.querySelector(".compose-card");
-const receiveCard = document.querySelector(".receive-card");
-const sendModeButton = document.getElementById("mode-send");
-const receiveModeButton = document.getElementById("mode-receive");
+const VERSION = "0.2.0";
+const composeView = document.querySelector(".send-view");
+const receiveView = document.querySelector(".receive-view");
+const modeSend = document.getElementById("mode-send");
+const modeReceive = document.getElementById("mode-receive");
+const manualTab = document.getElementById("manual-tab");
+const scanTab = document.getElementById("scan-tab");
+const manualPanel = document.getElementById("manual-panel");
+const scanPanel = document.getElementById("scan-panel");
 const input = document.getElementById("clip-input");
 const maskToggle = document.getElementById("mask-toggle");
 const sendButton = document.getElementById("send-button");
+const receiveButton = document.getElementById("receive-button");
 const sendResult = document.getElementById("send-result");
 const shareCode = document.getElementById("share-code");
 const countdown = document.getElementById("countdown");
+const qrCanvas = document.getElementById("qr-canvas");
 const receiveState = document.getElementById("receive-state");
 const receiveResult = document.getElementById("receive-result");
-const receiveButton = document.getElementById("receive-button");
 const receivedText = document.getElementById("received-text");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
+const scannerVideo = document.getElementById("scanner-video");
+const scannerPlaceholder = document.getElementById("scanner-placeholder");
 
 let countdownTimer = null;
+let scannerStream = null;
+let scanLoopTimer = null;
+let barcodeDetector = null;
 
 bootstrap();
 
 function bootstrap() {
-  showComposeMode();
-
-  if (!window.isSecureContext || !globalThis.crypto?.subtle) {
-    setReceiveHint("当前不是安全上下文。本地加解密需要 HTTPS 或 localhost。");
-  }
-
-  sendModeButton.addEventListener("click", showComposeMode);
-  receiveModeButton.addEventListener("click", showReceiveMode);
+  showSendView();
+  modeSend.addEventListener("click", showSendView);
+  modeReceive.addEventListener("click", showReceiveView);
+  manualTab.addEventListener("click", showManualPanel);
+  scanTab.addEventListener("click", showScanPanel);
   sendButton.addEventListener("click", handleSend);
   receiveButton.addEventListener("click", handleReceive);
   maskToggle.addEventListener("change", () => {
     input.classList.toggle("masked", maskToggle.checked);
   });
   wireCodeCells();
+  setupScannerSupport();
+}
+
+function showSendView() {
+  stopScanner();
+  composeView.classList.remove("hidden");
+  receiveView.classList.add("hidden");
+  modeSend.classList.add("active");
+  modeReceive.classList.remove("active");
+}
+
+function showReceiveView() {
+  composeView.classList.add("hidden");
+  receiveView.classList.remove("hidden");
+  modeSend.classList.remove("active");
+  modeReceive.classList.add("active");
+}
+
+function showManualPanel() {
+  manualPanel.classList.remove("hidden");
+  scanPanel.classList.add("hidden");
+  manualTab.classList.add("active");
+  scanTab.classList.remove("active");
+  stopScanner();
+}
+
+async function showScanPanel() {
+  manualPanel.classList.add("hidden");
+  scanPanel.classList.remove("hidden");
+  manualTab.classList.remove("active");
+  scanTab.classList.add("active");
+  await startScanner();
 }
 
 async function handleSend() {
-  const text = input.value;
-  if (!text.trim()) {
+  const text = input.value.trim();
+  if (!text) {
     input.focus();
     return;
   }
@@ -45,24 +85,26 @@ async function handleSend() {
   if (!window.isSecureContext || !globalThis.crypto?.subtle) {
     sendResult.classList.remove("hidden");
     shareCode.textContent = "不可用";
-    countdown.textContent = "本地加密需要 HTTPS 或 localhost。当前这个局域网 HTTP 地址不能安全生成临时码。";
+    countdown.textContent = "本地加密需要 HTTPS 或 localhost。";
     return;
   }
 
   sendButton.disabled = true;
-  sendButton.textContent = "加密发送中…";
+  sendButton.textContent = "生成中…";
 
   try {
     const code = await createAndSend(text);
+    shareCode.textContent = spacedCode(code);
     sendResult.classList.remove("hidden");
-    shareCode.textContent = code;
+    renderQr(code);
   } catch (error) {
     sendResult.classList.remove("hidden");
     shareCode.textContent = "失败";
-    countdown.textContent = error.message || "发送失败";
+    countdown.textContent = error.message || "生成失败";
+    clearQr();
   } finally {
     sendButton.disabled = false;
-    sendButton.textContent = "发送";
+    sendButton.textContent = "生成接收码";
   }
 }
 
@@ -82,22 +124,18 @@ async function createAndSend(text) {
       }),
     });
     const data = await response.json();
-    if (response.status === 409) {
-      continue;
-    }
-    if (!response.ok) {
-      throw new Error(data.error || "发送失败");
-    }
+    if (response.status === 409) continue;
+    if (!response.ok) throw new Error(data.error || "生成失败");
     startCountdown(data.expiresAt);
     return locator + secret;
   }
-  throw new Error("临时码生成失败，请重试");
+  throw new Error("接收码生成失败，请重试");
 }
 
 async function handleReceive() {
   const code = getCodeValue();
   if (!/^[A-Z0-9]{6}$/.test(code)) {
-    setReceiveHint("请输入完整 6 位临时码。");
+    setReceiveHint("请输入 6 位接收码。");
     return;
   }
 
@@ -106,7 +144,7 @@ async function handleReceive() {
     return;
   }
 
-  setReceiveHint("正在解密…");
+  setReceiveHint("正在本地解密…");
   receiveResult.classList.add("hidden");
 
   try {
@@ -118,9 +156,7 @@ async function handleReceive() {
       body: JSON.stringify({ locator }),
     });
     const payload = await fetchResponse.json();
-    if (!fetchResponse.ok) {
-      throw new Error(payload.error || "读取失败");
-    }
+    if (!fetchResponse.ok) throw new Error(payload.error || "读取失败");
 
     const text = await decryptText(payload, secret);
     await fetch("/api/clips/read", {
@@ -139,20 +175,6 @@ async function handleReceive() {
   }
 }
 
-function showComposeMode() {
-  composeCard.classList.remove("hidden");
-  receiveCard.classList.add("hidden");
-  sendModeButton.classList.add("active");
-  receiveModeButton.classList.remove("active");
-}
-
-function showReceiveMode() {
-  composeCard.classList.add("hidden");
-  receiveCard.classList.remove("hidden");
-  sendModeButton.classList.remove("active");
-  receiveModeButton.classList.add("active");
-}
-
 function startCountdown(expiresAt) {
   clearInterval(countdownTimer);
   tick();
@@ -162,10 +184,10 @@ function startCountdown(expiresAt) {
     const ms = expiresAt - Date.now();
     if (ms <= 0) {
       clearInterval(countdownTimer);
-      countdown.textContent = "文本已销毁。";
+      countdown.textContent = "文本已销毁";
       return;
     }
-    countdown.textContent = `${(ms / 1000).toFixed(1)} 秒后文本销毁。`;
+    countdown.textContent = `${Math.ceil(ms / 1000)} 秒后失效`;
   }
 }
 
@@ -173,36 +195,103 @@ function wireCodeCells() {
   codeCells.forEach((cell, index) => {
     cell.addEventListener("input", () => {
       cell.value = normalizeChar(cell.value);
-      if (cell.value && index < codeCells.length - 1) {
-        codeCells[index + 1].focus();
-      }
-      if (getCodeValue().length === 6) {
-        setReceiveHint("接收码完整，可点击解密并复制。");
-      }
+      if (cell.value && index < codeCells.length - 1) codeCells[index + 1].focus();
+      if (getCodeValue().length === 6) setReceiveHint("接收码完整，可点击解密并复制。");
     });
-
     cell.addEventListener("keydown", (event) => {
-      if (event.key === "Backspace" && !cell.value && index > 0) {
-        codeCells[index - 1].focus();
-      }
-      if (event.key === "ArrowLeft" && index > 0) {
-        codeCells[index - 1].focus();
-      }
-      if (event.key === "ArrowRight" && index < codeCells.length - 1) {
-        codeCells[index + 1].focus();
-      }
+      if (event.key === "Backspace" && !cell.value && index > 0) codeCells[index - 1].focus();
+      if (event.key === "ArrowLeft" && index > 0) codeCells[index - 1].focus();
+      if (event.key === "ArrowRight" && index < codeCells.length - 1) codeCells[index + 1].focus();
     });
-
     cell.addEventListener("paste", (event) => {
       event.preventDefault();
-      const pasted = (event.clipboardData?.getData("text") || "")
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .slice(0, 6);
-      pasted.split("").forEach((char, i) => {
-        if (codeCells[i]) codeCells[i].value = char;
-      });
+      fillCodeCells((event.clipboardData?.getData("text") || ""));
     });
+  });
+}
+
+function setupScannerSupport() {
+  if ("BarcodeDetector" in window) {
+    try {
+      barcodeDetector = new BarcodeDetector({ formats: ["qr_code"] });
+      scannerPlaceholder.textContent = "点击“扫码识别”后对准二维码";
+    } catch {
+      scannerPlaceholder.textContent = "当前浏览器不支持扫码识别";
+    }
+  } else {
+    scannerPlaceholder.textContent = "当前浏览器不支持扫码识别";
+  }
+}
+
+async function startScanner() {
+  if (!barcodeDetector) return;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    scannerPlaceholder.textContent = "当前设备不支持摄像头调用";
+    return;
+  }
+
+  stopScanner();
+  try {
+    scannerStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false,
+    });
+    scannerVideo.srcObject = scannerStream;
+    await scannerVideo.play();
+    scannerPlaceholder.classList.add("hidden");
+    scanLoop();
+  } catch {
+    scannerPlaceholder.textContent = "摄像头打开失败，请检查权限";
+    scannerPlaceholder.classList.remove("hidden");
+  }
+}
+
+function scanLoop() {
+  stopScanLoopOnly();
+  scanLoopTimer = window.setInterval(async () => {
+    if (!barcodeDetector || !scannerVideo.videoWidth) return;
+    try {
+      const codes = await barcodeDetector.detect(scannerVideo);
+      const hit = codes.find((item) => normalizeScannedCode(item.rawValue));
+      if (!hit) return;
+      const code = normalizeScannedCode(hit.rawValue);
+      if (!code) return;
+      fillCodeCells(code);
+      setReceiveHint("扫码成功，已自动填入接收码。");
+      showManualPanel();
+    } catch {
+      // Ignore transient scanner errors.
+    }
+  }, 500);
+}
+
+function stopScanLoopOnly() {
+  if (scanLoopTimer) {
+    clearInterval(scanLoopTimer);
+    scanLoopTimer = null;
+  }
+}
+
+function stopScanner() {
+  stopScanLoopOnly();
+  if (scannerStream) {
+    scannerStream.getTracks().forEach((track) => track.stop());
+    scannerStream = null;
+  }
+  if (scannerVideo.srcObject) {
+    scannerVideo.srcObject = null;
+  }
+  scannerPlaceholder.classList.remove("hidden");
+}
+
+function normalizeScannedCode(raw) {
+  return (raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+}
+
+function fillCodeCells(raw) {
+  const chars = normalizeScannedCode(raw).split("");
+  codeCells.forEach((cell, index) => {
+    cell.value = chars[index] || "";
   });
 }
 
@@ -221,8 +310,31 @@ function normalizeChar(value) {
 }
 
 function setReceiveHint(message) {
-  receiveState.classList.remove("hidden");
-  receiveState.innerHTML = `<p class="hint">${escapeHtml(message)}<\/p>`;
+  receiveState.innerHTML = `<p class="status-text">${escapeHtml(message)}</p>`;
+}
+
+function spacedCode(code) {
+  return code.split("").join(" ");
+}
+
+function renderQr(code) {
+  if (!window.QRCode) {
+    qrCanvas.replaceWith(document.createTextNode("二维码库加载失败"));
+    return;
+  }
+  QRCode.toCanvas(qrCanvas, code, {
+    margin: 1,
+    width: 220,
+    color: {
+      dark: "#1d1d1d",
+      light: "#ffffff",
+    },
+  });
+}
+
+function clearQr() {
+  const context = qrCanvas.getContext("2d");
+  context.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
 }
 
 function randomChars(length) {
@@ -236,11 +348,7 @@ async function encryptText(text, secret) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(secret, salt);
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    new TextEncoder().encode(text),
-  );
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(text));
   return {
     ciphertext: base64FromBytes(new Uint8Array(ciphertext)),
     iv: base64FromBytes(iv),
@@ -258,7 +366,7 @@ async function decryptText(payload, secret) {
     );
     return new TextDecoder().decode(plaintext);
   } catch {
-    throw new Error("临时码错误，或内容已失效。");
+    throw new Error("接收码错误，或内容已失效。");
   }
 }
 
@@ -320,9 +428,7 @@ function base64FromBytes(bytes) {
 function bytesFromBase64(value) {
   const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
 
