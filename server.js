@@ -52,6 +52,10 @@ const server = http.createServer(async (req, res) => {
       return await serveFile(res, path.join(publicDir, "icon.png"));
     }
 
+    if (req.method === "GET" && url.pathname === "/apple-touch-icon.png") {
+      return await serveFile(res, path.join(publicDir, "icon.png"));
+    }
+
     if (req.method === "POST" && url.pathname === "/api/clips") {
       return await handleCreateClip(req, res);
     }
