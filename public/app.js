@@ -1,9 +1,8 @@
-const VERSION = "0.3.0";
+const VERSION = "0.3.1";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
 const input = document.getElementById("clip-input");
-const maskToggle = document.getElementById("mask-toggle");
 const sendButton = document.getElementById("send-button");
 const sendResult = document.getElementById("send-result");
 const shareCode = document.getElementById("share-code");
@@ -17,11 +16,15 @@ const decryptButton = document.getElementById("decrypt-button");
 const copyButton = document.getElementById("copy-button");
 const receiveState = document.getElementById("receive-state");
 const manualState = document.getElementById("manual-state");
+const decryptedTextEl = document.getElementById("decrypted-text");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
 const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
+let manualCountdownTimer = null;
+let manualCheckId = 0;
 let decryptedText = "";
+let manualPayload = null;
 
 bootstrap();
 
@@ -42,10 +45,9 @@ function bootstrap() {
   receiveManualButton.addEventListener("click", showManualView);
   receiveToSendButton.addEventListener("click", showSendView);
   manualToSendButton.addEventListener("click", showSendView);
-  maskToggle.addEventListener("change", () => {
-    input.classList.toggle("masked", maskToggle.checked);
-  });
+  input.addEventListener("input", updateSendButtonState);
   wireCodeCells();
+  updateSendButtonState();
 }
 
 function showSendView() {
@@ -60,7 +62,10 @@ function showReceiveView() {
 function showManualView() {
   showOnly(manualView);
   setUrlCode("");
+  manualPayload = null;
+  clearManualCountdown();
   manualState.textContent = "输入完整接收码后解密。";
+  updateDecryptButtonState(false);
 }
 
 function showOnly(activeView) {
@@ -94,7 +99,8 @@ async function handleSend() {
     showSendError(error.message || "生成失败");
   } finally {
     sendButton.disabled = false;
-    sendButton.textContent = "生成接收码";
+    sendButton.textContent = "发送";
+    updateSendButtonState();
   }
 }
 
@@ -135,13 +141,18 @@ async function handleManualDecrypt() {
     manualState.textContent = "请输入 6 位接收码。";
     return;
   }
+  if (manualPayload?.code === code) {
+    await showDecryptedResult(manualPayload);
+    return;
+  }
   showReceiveView();
   await decryptCode(code);
 }
 
 async function decryptCode(code) {
   decryptedText = "";
-  copyButton.classList.add("hidden");
+  renderDecryptedText("");
+  updateCopyButtonState(false);
   receiveState.textContent = "正在本地解密...";
 
   if (!canUseCrypto()) {
@@ -150,30 +161,24 @@ async function decryptCode(code) {
   }
 
   try {
-    const locator = code.slice(0, 3);
-    const secret = code.slice(3);
-    const fetchResponse = await fetch("/api/clips/fetch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ locator }),
-    });
-    const payload = await fetchResponse.json();
-    if (!fetchResponse.ok) throw new Error(payload.error || "读取失败");
-
-    decryptedText = await decryptText(payload, secret);
-    await fetch("/api/clips/read", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ locator }),
-    });
-
-    clearCodeCells();
-    setUrlCode("");
-    receiveState.textContent = "解密成功，点击复制到本地剪贴板。";
-    copyButton.classList.remove("hidden");
+    const result = await loadAndDecrypt(code);
+    await showDecryptedResult(result);
   } catch (error) {
     receiveState.textContent = error.message || "解密失败";
   }
+}
+
+async function showDecryptedResult(result) {
+  showReceiveView();
+  decryptedText = result.text;
+  await consumeClip(result.locator);
+  clearCodeCells();
+  clearManualCountdown();
+  manualPayload = null;
+  setUrlCode("");
+  renderDecryptedText(decryptedText);
+  updateCopyButtonState(true);
+  receiveState.textContent = "解密成功，点击复制到本地剪贴板。";
 }
 
 async function handleCopy() {
@@ -202,12 +207,37 @@ function startCountdown(expiresAt) {
   }
 }
 
+function startManualCountdown(expiresAt) {
+  clearManualCountdown();
+  tick();
+  manualCountdownTimer = setInterval(tick, 250);
+
+  function tick() {
+    const ms = expiresAt - Date.now();
+    if (ms <= 0) {
+      clearManualCountdown();
+      manualPayload = null;
+      updateDecryptButtonState(false);
+      manualState.textContent = "文本已销毁。";
+      return;
+    }
+    manualState.textContent = `接收码正确，${Math.ceil(ms / 1000)} 秒后文本销毁。`;
+  }
+}
+
+function clearManualCountdown() {
+  if (manualCountdownTimer) {
+    clearInterval(manualCountdownTimer);
+    manualCountdownTimer = null;
+  }
+}
+
 function wireCodeCells() {
   codeCells.forEach((cell, index) => {
     cell.addEventListener("input", () => {
       cell.value = normalizeChar(cell.value);
       if (cell.value && index < codeCells.length - 1) codeCells[index + 1].focus();
-      if (getCodeValue().length === 6) manualState.textContent = "接收码完整，可点击解密文本。";
+      handleCodeInputChange();
     });
     cell.addEventListener("keydown", (event) => {
       if (event.key === "Backspace" && !cell.value && index > 0) codeCells[index - 1].focus();
@@ -227,6 +257,7 @@ function fillCodeCells(raw) {
     cell.value = chars[index] || "";
   });
   if (chars.length === 6) manualState.textContent = "接收码完整，可点击解密文本。";
+  handleCodeInputChange();
 }
 
 function getCodeValue() {
@@ -237,6 +268,46 @@ function clearCodeCells() {
   codeCells.forEach((cell) => {
     cell.value = "";
   });
+}
+
+function handleCodeInputChange() {
+  const code = getCodeValue();
+  manualPayload = null;
+  clearManualCountdown();
+  updateDecryptButtonState(false);
+
+  if (!code) {
+    manualState.textContent = "输入完整接收码后解密。";
+    return;
+  }
+  if (code.length < 6) {
+    manualState.textContent = "继续输入接收码。";
+    return;
+  }
+  validateManualCode(code);
+}
+
+async function validateManualCode(code) {
+  const checkId = ++manualCheckId;
+  manualState.textContent = "正在校验接收码...";
+
+  if (!canUseCrypto()) {
+    manualState.textContent = "本地解密需要 HTTPS 或 localhost。";
+    return;
+  }
+
+  try {
+    const result = await loadAndDecrypt(code);
+    if (checkId !== manualCheckId || getCodeValue() !== code) return;
+    manualPayload = result;
+    updateDecryptButtonState(true);
+    startManualCountdown(result.expiresAt);
+  } catch (error) {
+    if (checkId !== manualCheckId || getCodeValue() !== code) return;
+    manualPayload = null;
+    updateDecryptButtonState(false);
+    manualState.textContent = error.message || "接收码错误。";
+  }
 }
 
 function normalizeCode(value) {
@@ -258,6 +329,53 @@ function renderQr(code) {
 
 function clearQr() {
   qrImage.removeAttribute("src");
+}
+
+async function loadAndDecrypt(code) {
+  const locator = code.slice(0, 3);
+  const secret = code.slice(3);
+  const fetchResponse = await fetch("/api/clips/fetch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ locator }),
+  });
+  const payload = await fetchResponse.json();
+  if (!fetchResponse.ok) throw new Error(payload.error || "读取失败");
+
+  const text = await decryptText(payload, secret);
+  return {
+    code,
+    locator,
+    text,
+    expiresAt: payload.expiresAt,
+  };
+}
+
+async function consumeClip(locator) {
+  await fetch("/api/clips/read", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ locator }),
+  });
+}
+
+function renderDecryptedText(value) {
+  decryptedTextEl.textContent = value;
+  decryptedTextEl.classList.toggle("hidden", !value);
+}
+
+function updateSendButtonState() {
+  sendButton.disabled = !input.value.trim();
+}
+
+function updateCopyButtonState(enabled) {
+  copyButton.disabled = !enabled;
+}
+
+function updateDecryptButtonState(enabled) {
+  decryptButton.disabled = !enabled;
+  decryptButton.classList.toggle("opacity-35", !enabled);
+  decryptButton.classList.toggle("cursor-not-allowed", !enabled);
 }
 
 function canUseCrypto() {

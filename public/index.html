@@ -10,9 +10,6 @@
       font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
     }
 
-    .masked {
-      -webkit-text-security: disc;
-    }
   </style>
 </head>
 <body class="min-h-screen bg-[radial-gradient(circle_at_20%_10%,#fffaf0_0,#f5f1e8_34%,#ece5d7_100%)] text-[#181714] antialiased">
@@ -23,24 +20,18 @@
         <h1 class="text-4xl font-black tracking-tight sm:text-5xl">发送文本</h1>
       </div>
 
-      <label class="mb-3 text-sm font-bold text-[#847b6c]" for="clip-input">文本内容</label>
-      <textarea id="clip-input" class="masked-target min-h-12 w-full resize-none rounded-2xl border border-[#d4cab9] bg-white/72 px-5 py-3 text-center text-xl font-semibold leading-7 shadow-[0_22px_60px_rgba(49,37,20,0.10)] outline-none transition focus:border-[#181714]" placeholder="长按粘贴文本" rows="1"></textarea>
+      <textarea id="clip-input" class="min-h-12 w-full resize-none rounded-2xl border border-[#d4cab9] bg-white/72 px-5 py-3 text-center text-xl font-semibold leading-7 shadow-[0_22px_60px_rgba(49,37,20,0.10)] outline-none transition focus:border-[#181714]" placeholder="粘贴或输入文本内容" rows="1"></textarea>
 
-      <label class="mt-4 inline-flex w-fit items-center gap-2 rounded-full border border-[#d4cab9] bg-white/45 px-4 py-2 text-sm font-semibold text-[#847b6c]">
-        <input id="mask-toggle" class="accent-[#181714]" type="checkbox">
-        <span>隐藏文本</span>
-      </label>
-
-      <button id="send-button" class="mt-5 w-full rounded-2xl bg-[#181714] px-5 py-4 text-lg font-black text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition active:scale-[0.99]" type="button">生成接收码</button>
+      <button id="send-button" class="mt-5 w-full rounded-2xl bg-[#181714] px-5 py-4 text-lg font-black text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>发送</button>
 
       <section id="send-result" class="mt-7 hidden rounded-[28px] border border-white/70 bg-[#f7f3ea]/90 p-5 shadow-[0_22px_60px_rgba(49,37,20,0.10)]" aria-live="polite">
         <p class="text-center text-sm font-bold tracking-[0.2em] text-[#847b6c]">接收码</p>
-        <strong id="share-code" class="mt-3 block text-center text-5xl font-black tracking-[0.25em] text-[#181714] sm:text-6xl">------</strong>
+        <strong id="share-code" class="mx-auto mt-3 block w-fit max-w-full whitespace-nowrap rounded-2xl bg-white/55 px-5 py-3 text-center text-4xl font-black tracking-[0.16em] text-[#181714] sm:text-5xl">------</strong>
         <p id="countdown" class="mt-3 text-center text-sm font-semibold text-[#847b6c]"></p>
 
         <div class="my-5 flex items-center gap-3 text-sm font-semibold text-[#847b6c]">
           <span class="h-px flex-1 bg-[#d4cab9]"></span>
-          <span>另一台设备扫码打开</span>
+          <span>用另一台设备扫码接收</span>
           <span class="h-px flex-1 bg-[#d4cab9]"></span>
         </div>
 
@@ -51,7 +42,7 @@
       </section>
 
       <div class="mt-8 flex justify-center">
-        <button id="manual-entry-button" class="text-sm font-semibold text-[#847b6c] underline decoration-[#d4cab9] underline-offset-4" type="button">手动输入接收码</button>
+        <button id="manual-entry-button" class="text-sm font-semibold text-[#847b6c] underline decoration-[#d4cab9] underline-offset-4" type="button">切换到接收</button>
       </div>
     </section>
 
@@ -59,14 +50,15 @@
       <div class="rounded-[32px] border border-white/70 bg-[#f7f3ea]/95 p-6 text-center shadow-[0_22px_60px_rgba(49,37,20,0.10)]">
         <p class="mb-3 text-sm font-semibold tracking-[0.28em] text-[#847b6c]">LOCAL DECRYPTED</p>
         <h1 class="text-4xl font-black tracking-tight">文本已解密</h1>
-        <p id="receive-state" class="mt-4 min-h-6 text-sm font-semibold text-[#847b6c]">正在本地解密...</p>
+        <pre id="decrypted-text" class="mt-5 hidden max-h-[34vh] overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-[#d4cab9] bg-white/65 p-4 text-left text-lg font-semibold leading-7 text-[#181714]"></pre>
 
-        <button id="copy-button" class="mt-7 hidden w-full rounded-2xl bg-[#181714] px-5 py-5 text-xl font-black text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition active:scale-[0.99]" type="button">复制到剪贴板</button>
+        <button id="copy-button" class="mt-7 w-full rounded-2xl bg-[#181714] px-5 py-5 text-xl font-black text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>复制到剪贴板</button>
+        <p id="receive-state" class="mt-4 min-h-6 text-sm font-semibold text-[#847b6c]">正在本地解密...</p>
       </div>
 
       <div class="mt-8 flex justify-center gap-5 text-sm font-semibold text-[#847b6c]">
         <button id="receive-to-send-button" class="underline decoration-[#d4cab9] underline-offset-4" type="button">切换到发送</button>
-        <button id="receive-manual-button" class="underline decoration-[#d4cab9] underline-offset-4" type="button">手动输入 code</button>
+        <button id="receive-manual-button" class="underline decoration-[#d4cab9] underline-offset-4" type="button">切换到接收</button>
       </div>
     </section>
 
@@ -86,7 +78,7 @@
         <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-black uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
       </div>
 
-      <button id="decrypt-button" class="mt-6 w-full rounded-2xl bg-[#181714] px-5 py-4 text-lg font-black text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition active:scale-[0.99]" type="button">解密文本</button>
+      <button id="decrypt-button" class="mt-6 w-full rounded-2xl bg-[#181714] px-5 py-4 text-lg font-black text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>解密文本</button>
       <p id="manual-state" class="mt-4 min-h-6 text-center text-sm font-semibold text-[#847b6c]">输入完整接收码后解密。</p>
 
       <div class="mt-8 flex justify-center">
@@ -96,11 +88,11 @@
 
     <footer class="pb-1 pt-8 text-center text-sm font-semibold text-[#847b6c]">
       <h2 class="text-xl font-black text-[#181714]">60秒剪贴板</h2>
-      <p class="mt-2">一次性加密 · 跨设备传输 · 60 秒自动销毁</p>
-      <p class="mt-1">Developed by @11u1uguru  | Version 0.3.0</p>
+      <p class="mt-2">本地加密 · 跨设备传输 · 自动销毁</p>
+      <p class="mt-1">Developed by @1u1uguru  | Version 0.3.1</p>
     </footer>
   </main>
 
-  <script src="/app.js?v=0.3.0"></script>
+  <script src="/app.js?v=0.3.1"></script>
 </body>
 </html>
