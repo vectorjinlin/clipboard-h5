@@ -21,6 +21,8 @@ const codeCells = Array.from(document.querySelectorAll(".code-cell"));
 const homeHelp = document.getElementById("home-help");
 const homeHelpButton = document.getElementById("home-help-button");
 const homeHelpClose = document.getElementById("home-help-close");
+const statsUses = document.getElementById("stats-uses");
+const statsIps = document.getElementById("stats-ips");
 const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
@@ -65,6 +67,8 @@ function bootstrap() {
     handleShareCodeCopy();
   });
   wireCodeCells();
+  lockViewportZoom();
+  loadStats();
   updateSendButtonState();
 }
 
@@ -141,6 +145,7 @@ async function createAndSend(text) {
     if (response.status === 409) continue;
     if (!response.ok) throw new Error(data.error || "生成失败");
     startCountdown(data.expiresAt);
+    loadStats();
     return locator + secret;
   }
   throw new Error("接收码生成失败，请重试");
@@ -455,6 +460,38 @@ function setUrlCode(code) {
     url.searchParams.delete("code");
   }
   window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function lockViewportZoom() {
+  let lastTouchEnd = 0;
+  document.addEventListener("gesturestart", preventZoom, { passive: false });
+  document.addEventListener("gesturechange", preventZoom, { passive: false });
+  document.addEventListener("gestureend", preventZoom, { passive: false });
+  document.addEventListener("wheel", (event) => {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+  }, { passive: false });
+  document.addEventListener("touchend", (event) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) event.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+}
+
+function preventZoom(event) {
+  event.preventDefault();
+}
+
+async function loadStats() {
+  try {
+    const response = await fetch("/api/stats", { cache: "no-store" });
+    if (!response.ok) return;
+    const data = await response.json();
+    statsUses.textContent = String(data.totalUses ?? "--");
+    statsIps.textContent = String(data.ipCount ?? "--");
+  } catch {
+    // Stats are non-critical.
+  }
 }
 
 function randomChars(length) {
