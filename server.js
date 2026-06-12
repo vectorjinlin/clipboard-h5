@@ -11,7 +11,9 @@ const port = Number(env.PORT || process.env.PORT || 8788);
 const appBaseUrl = env.APP_BASE_URL || process.env.APP_BASE_URL || `http://localhost:${port}`;
 const ttlSeconds = Math.max(5, Number(env.TTL_SECONDS || process.env.TTL_SECONDS || 60));
 const maxTextBytes = Math.max(1024, Number(env.MAX_TEXT_BYTES || process.env.MAX_TEXT_BYTES || 65536));
-const maxRecentVisits = 30;
+const visitWindowMs = 24 * 60 * 60 * 1000;
+const maxStoredVisits = 2000;
+const defaultVisitPageSize = 10;
 
 const store = new Map();
 const stats = loadStats();
@@ -46,12 +48,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/visits") {
-      return sendJson(res, 200, getVisitStats());
+      return sendJson(res, 200, getVisitStats(url));
     }
 
     if (req.method === "POST" && url.pathname === "/api/visit") {
       trackVisit(req);
-      return sendJson(res, 200, getVisitStats());
+      return sendJson(res, 200, getVisitStats(url));
     }
 
     if (req.method === "GET" && url.pathname === "/api/qr") {
@@ -144,12 +146,26 @@ function getPublicStats() {
   };
 }
 
-function getVisitStats() {
+function getVisitStats(url = new URL("http://localhost/")) {
+  pruneOldVisits();
+  const pageSize = clampInteger(url.searchParams.get("pageSize"), 1, 50, defaultVisitPageSize);
+  const page = clampInteger(url.searchParams.get("page"), 1, 9999, 1);
+  const visits24h = getVisitsWithinWindow();
+  const totalPages = Math.max(1, Math.ceil(visits24h.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * pageSize;
+  const ipCount24h = new Set(visits24h.map((visit) => hashIp(visit.ip))).size;
+
   return {
     totalUses: stats.totalUses,
     totalVisits: stats.totalVisits,
+    totalVisits24h: visits24h.length,
     ipCount: stats.ipHashes.length,
-    recentVisits: stats.recentVisits.slice(0, maxRecentVisits).map((visit) => ({
+    ipCount24h,
+    page: safePage,
+    pageSize,
+    totalPages,
+    recentVisits: visits24h.slice(offset, offset + pageSize).map((visit) => ({
       time: visit.time,
       ip: visit.ip,
       region: visit.region || "未知地区",
@@ -167,7 +183,7 @@ function trackVisit(req) {
   stats.totalVisits += 1;
   if (!stats.ipHashes.includes(key)) stats.ipHashes.push(key);
   stats.recentVisits.unshift({ time: now, ip, region });
-  stats.recentVisits = stats.recentVisits.slice(0, maxRecentVisits);
+  pruneOldVisits();
   saveStats();
 
   if (region === "未知地区") {
@@ -204,7 +220,7 @@ function loadStats() {
       totalUses: Number(parsed.totalUses) || 0,
       totalVisits: Number(parsed.totalVisits) || 0,
       ipHashes: Array.isArray(parsed.ipHashes) ? parsed.ipHashes.filter((item) => typeof item === "string") : [],
-      recentVisits: Array.isArray(parsed.recentVisits) ? parsed.recentVisits.filter(isValidVisit).slice(0, maxRecentVisits) : [],
+      recentVisits: Array.isArray(parsed.recentVisits) ? parsed.recentVisits.filter(isValidVisit).slice(0, maxStoredVisits) : [],
       geoCache: parsed.geoCache && typeof parsed.geoCache === "object" ? parsed.geoCache : {},
     };
   } catch {
@@ -219,6 +235,24 @@ function isValidVisit(item) {
 function saveStats() {
   fs.mkdirSync(dataDir, { recursive: true });
   fs.writeFileSync(statsFile, JSON.stringify(stats, null, 2));
+}
+
+function pruneOldVisits() {
+  const cutoff = Date.now() - visitWindowMs;
+  stats.recentVisits = stats.recentVisits
+    .filter((visit) => Date.parse(visit.time) >= cutoff)
+    .slice(0, maxStoredVisits);
+}
+
+function getVisitsWithinWindow() {
+  const cutoff = Date.now() - visitWindowMs;
+  return stats.recentVisits.filter((visit) => Date.parse(visit.time) >= cutoff);
+}
+
+function clampInteger(value, min, max, fallback) {
+  const number = Number.parseInt(value, 10);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
 }
 
 async function handleFetchClip(req, res) {

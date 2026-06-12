@@ -1,4 +1,4 @@
-const VERSION = "0.3.3";
+const VERSION = "0.3.4";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
@@ -18,7 +18,6 @@ const receiveState = document.getElementById("receive-state");
 const manualState = document.getElementById("manual-state");
 const decryptedCard = document.getElementById("decrypted-card");
 const decryptedTextEl = document.getElementById("decrypted-text");
-const decryptedMeta = document.getElementById("decrypted-meta");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
 const homeHelp = document.getElementById("home-help");
 const homeHelpButton = document.getElementById("home-help-button");
@@ -28,6 +27,9 @@ const statsModal = document.getElementById("stats-modal");
 const statsClose = document.getElementById("stats-close");
 const statsSummary = document.getElementById("stats-summary");
 const statsList = document.getElementById("stats-list");
+const statsPrev = document.getElementById("stats-prev");
+const statsNext = document.getElementById("stats-next");
+const statsPage = document.getElementById("stats-page");
 const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
@@ -39,6 +41,9 @@ let currentShareUrl = "";
 let countdownHoldUntil = 0;
 let footerTapCount = 0;
 let footerTapTimer = null;
+let statsCurrentPage = 1;
+let statsTotalPages = 1;
+const statsPageSize = 10;
 
 bootstrap();
 
@@ -71,6 +76,12 @@ function bootstrap() {
   statsClose.addEventListener("click", closeStatsModal);
   statsModal.addEventListener("click", (event) => {
     if (event.target === statsModal) closeStatsModal();
+  });
+  statsPrev.addEventListener("click", () => {
+    if (statsCurrentPage > 1) loadVisitStats(statsCurrentPage - 1);
+  });
+  statsNext.addEventListener("click", () => {
+    if (statsCurrentPage < statsTotalPages) loadVisitStats(statsCurrentPage + 1);
   });
   shareCode.addEventListener("click", handleShareCodeCopy);
   shareCode.addEventListener("keydown", (event) => {
@@ -424,7 +435,6 @@ async function consumeClip(locator) {
 
 function renderDecryptedText(value) {
   decryptedTextEl.textContent = value;
-  decryptedMeta.textContent = value ? `${countCharacters(value)} 字符` : "";
   decryptedCard.classList.toggle("hidden", !value);
   decryptedCard.classList.remove("is-visible");
   if (!value) return Promise.resolve();
@@ -519,18 +529,28 @@ async function handleFooterTap() {
 
 async function openStatsModal() {
   statsModal.classList.add("is-open");
+  statsCurrentPage = 1;
+  await loadVisitStats(1);
+}
+
+async function loadVisitStats(page) {
   statsSummary.textContent = "正在读取";
   statsList.innerHTML = "";
+  updateStatsPager(page, statsTotalPages);
 
   try {
-    const response = await fetch("/api/visits", { cache: "no-store" });
+    const response = await fetch(`/api/visits?page=${page}&pageSize=${statsPageSize}`, { cache: "no-store" });
     if (!response.ok) throw new Error("读取失败");
     const data = await response.json();
-    statsSummary.textContent = `访问 ${data.totalVisits ?? 0} 次 · IP ${data.ipCount ?? 0} 个 · 发送 ${data.totalUses ?? 0} 次`;
-    renderVisitRows(data.recentVisits || []);
+    statsCurrentPage = data.page || page;
+    statsTotalPages = data.totalPages || 1;
+    statsSummary.textContent = `24小时访问 ${data.totalVisits24h ?? 0} 次 · IP ${data.ipCount24h ?? 0} 个 · 发送 ${data.totalUses ?? 0} 次`;
+    renderVisitRows(data.recentVisits || [], (statsCurrentPage - 1) * statsPageSize);
+    updateStatsPager(statsCurrentPage, statsTotalPages);
   } catch {
     statsSummary.textContent = "读取失败";
     statsList.innerHTML = `<p class="rounded-2xl bg-white/55 px-4 py-3 text-sm font-semibold text-[#b5472f]">无法读取最近访问</p>`;
+    updateStatsPager(1, 1);
   }
 }
 
@@ -546,9 +566,9 @@ function closeStatsModal() {
   statsModal.classList.remove("is-open");
 }
 
-function renderVisitRows(visits) {
+function renderVisitRows(visits, offset = 0) {
   if (!visits.length) {
-    statsList.innerHTML = `<p class="rounded-2xl bg-white/55 px-4 py-3 text-sm font-semibold text-[#847b6c]">暂无访问记录</p>`;
+    statsList.innerHTML = `<p class="rounded-2xl bg-white/55 px-4 py-3 text-sm font-semibold text-[#847b6c]">最近24小时暂无访问记录</p>`;
     return;
   }
 
@@ -557,13 +577,19 @@ function renderVisitRows(visits) {
     return `
       <article class="rounded-2xl border border-white/70 bg-white/55 px-4 py-3 text-left">
         <div class="flex items-center justify-between gap-3">
-          <p class="text-sm font-extrabold text-[#181714]">#${index + 1} ${escapeHtml(visit.ip || "未知 IP")}</p>
+          <p class="text-sm font-extrabold text-[#181714]">#${offset + index + 1} ${escapeHtml(visit.ip || "未知 IP")}</p>
           <p class="shrink-0 text-xs font-semibold text-[#847b6c]">${escapeHtml(time)}</p>
         </div>
         <p class="mt-1 text-sm font-semibold text-[#847b6c]">${escapeHtml(visit.region || "未知地区")}</p>
       </article>
     `;
   }).join("");
+}
+
+function updateStatsPager(page, totalPages) {
+  statsPage.textContent = `${page} / ${totalPages}`;
+  statsPrev.disabled = page <= 1;
+  statsNext.disabled = page >= totalPages;
 }
 
 function formatVisitTime(value) {
@@ -575,10 +601,6 @@ function formatVisitTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function countCharacters(value) {
-  return Array.from(value || "").length;
 }
 
 function escapeHtml(value) {
