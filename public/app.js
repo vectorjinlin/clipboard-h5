@@ -383,13 +383,25 @@ function focusSendResult() {
   sendResult.classList.remove("result-focus-in");
   void sendResult.offsetWidth;
   sendResult.classList.add("result-focus-in");
-  window.requestAnimationFrame(() => {
+  window.setTimeout(() => {
     const targetTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    window.scrollTo({
-      top: targetTop,
-      behavior: "smooth",
-    });
-  });
+    smoothScrollTo(targetTop, 500);
+  }, 1000);
+}
+
+function smoothScrollTo(targetTop, duration) {
+  const startTop = window.scrollY;
+  const distance = targetTop - startTop;
+  const startedAt = performance.now();
+
+  function tick(now) {
+    const progress = Math.min(1, (now - startedAt) / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    window.scrollTo(0, startTop + distance * eased);
+    if (progress < 1) window.requestAnimationFrame(tick);
+  }
+
+  window.requestAnimationFrame(tick);
 }
 
 async function loadAndDecrypt(code) {
