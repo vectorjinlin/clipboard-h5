@@ -228,7 +228,7 @@ function startManualCountdown(expiresAt) {
       clearManualCountdown();
       manualPayload = null;
       updateDecryptButtonState(false);
-      setManualMessage("已销毁", true);
+      setManualMessage("接收码输入错误（不存在或已过期）", true);
       return;
     }
     setManualMessage(`接收码正确，${Math.ceil(ms / 1000)} 秒后销毁`);
