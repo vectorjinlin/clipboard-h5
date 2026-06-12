@@ -188,16 +188,16 @@ async function decryptCode(code) {
 }
 
 async function showDecryptedResult(result) {
-  showReceiveView();
   decryptedText = result.text;
+  renderDecryptedText(decryptedText);
+  updateCopyButtonState(true);
+  setReceiveMessage("点击复制到本地剪贴板");
+  showReceiveView();
   await consumeClip(result.locator);
   clearCodeCells();
   clearManualCountdown();
   manualPayload = null;
   setUrlCode("");
-  renderDecryptedText(decryptedText);
-  updateCopyButtonState(true);
-  setReceiveMessage("点击复制到本地剪贴板");
 }
 
 async function handleCopy() {
@@ -380,13 +380,8 @@ async function handleShareCodeCopy() {
 }
 
 function focusSendResult() {
-  sendResult.classList.remove("result-focus-in");
-  void sendResult.offsetWidth;
-  sendResult.classList.add("result-focus-in");
-  window.setTimeout(() => {
-    const targetTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-    smoothScrollTo(targetTop, 500);
-  }, 1000);
+  const targetTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  smoothScrollTo(targetTop, 1000);
 }
 
 function smoothScrollTo(targetTop, duration) {
