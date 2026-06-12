@@ -1,88 +1,73 @@
-const VERSION = "0.2.0";
-const composeView = document.querySelector(".send-view");
-const receiveView = document.querySelector(".receive-view");
-const modeSend = document.getElementById("mode-send");
-const modeReceive = document.getElementById("mode-receive");
-const manualTab = document.getElementById("manual-tab");
-const scanTab = document.getElementById("scan-tab");
-const manualPanel = document.getElementById("manual-panel");
-const scanPanel = document.getElementById("scan-panel");
+const VERSION = "0.3.0";
+const sendView = document.getElementById("send-view");
+const receiveView = document.getElementById("receive-view");
+const manualView = document.getElementById("manual-view");
 const input = document.getElementById("clip-input");
 const maskToggle = document.getElementById("mask-toggle");
 const sendButton = document.getElementById("send-button");
-const receiveButton = document.getElementById("receive-button");
 const sendResult = document.getElementById("send-result");
 const shareCode = document.getElementById("share-code");
 const countdown = document.getElementById("countdown");
 const qrImage = document.getElementById("qr-image");
+const manualEntryButton = document.getElementById("manual-entry-button");
+const receiveToSendButton = document.getElementById("receive-to-send-button");
+const receiveManualButton = document.getElementById("receive-manual-button");
+const manualToSendButton = document.getElementById("manual-to-send-button");
+const decryptButton = document.getElementById("decrypt-button");
+const copyButton = document.getElementById("copy-button");
 const receiveState = document.getElementById("receive-state");
-const receiveResult = document.getElementById("receive-result");
-const receivedText = document.getElementById("received-text");
+const manualState = document.getElementById("manual-state");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
-const scannerVideo = document.getElementById("scanner-video");
-const scannerPlaceholder = document.getElementById("scanner-placeholder");
 const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
-let scannerStream = null;
-let scanLoopTimer = null;
-let barcodeDetector = null;
+let decryptedText = "";
 
 bootstrap();
 
 function bootstrap() {
-  const presetCode = new URL(window.location.href).searchParams.get("code");
-  if (presetCode && normalizeScannedCode(presetCode).length === 6) {
+  const presetCode = normalizeCode(new URL(window.location.href).searchParams.get("code"));
+
+  if (presetCode.length === 6) {
     showReceiveView();
-    showManualPanel();
-    fillCodeCells(presetCode);
-    setReceiveHint("已自动填入接收码，可直接点击解密并复制。");
+    decryptCode(presetCode);
   } else {
     showSendView();
   }
 
-  modeSend.addEventListener("click", showSendView);
-  modeReceive.addEventListener("click", showReceiveView);
-  manualTab.addEventListener("click", showManualPanel);
-  scanTab.addEventListener("click", showScanPanel);
   sendButton.addEventListener("click", handleSend);
-  receiveButton.addEventListener("click", handleReceive);
+  decryptButton.addEventListener("click", handleManualDecrypt);
+  copyButton.addEventListener("click", handleCopy);
+  manualEntryButton.addEventListener("click", showManualView);
+  receiveManualButton.addEventListener("click", showManualView);
+  receiveToSendButton.addEventListener("click", showSendView);
+  manualToSendButton.addEventListener("click", showSendView);
   maskToggle.addEventListener("change", () => {
     input.classList.toggle("masked", maskToggle.checked);
   });
   wireCodeCells();
-  setupScannerSupport();
 }
 
 function showSendView() {
-  stopScanner();
-  composeView.classList.remove("hidden");
-  receiveView.classList.add("hidden");
-  modeSend.classList.add("active");
-  modeReceive.classList.remove("active");
+  showOnly(sendView);
+  setUrlCode("");
 }
 
 function showReceiveView() {
-  composeView.classList.add("hidden");
-  receiveView.classList.remove("hidden");
-  modeSend.classList.remove("active");
-  modeReceive.classList.add("active");
+  showOnly(receiveView);
 }
 
-function showManualPanel() {
-  manualPanel.classList.remove("hidden");
-  scanPanel.classList.add("hidden");
-  manualTab.classList.add("active");
-  scanTab.classList.remove("active");
-  stopScanner();
+function showManualView() {
+  showOnly(manualView);
+  setUrlCode("");
+  manualState.textContent = "输入完整接收码后解密。";
 }
 
-async function showScanPanel() {
-  manualPanel.classList.add("hidden");
-  scanPanel.classList.remove("hidden");
-  manualTab.classList.remove("active");
-  scanTab.classList.add("active");
-  await startScanner();
+function showOnly(activeView) {
+  [sendView, receiveView, manualView].forEach((view) => {
+    view.classList.toggle("hidden", view !== activeView);
+    view.classList.toggle("flex", view === activeView);
+  });
 }
 
 async function handleSend() {
@@ -92,15 +77,13 @@ async function handleSend() {
     return;
   }
 
-  if (!window.isSecureContext || !globalThis.crypto?.subtle) {
-    sendResult.classList.remove("hidden");
-    shareCode.textContent = "不可用";
-    countdown.textContent = "本地加密需要 HTTPS 或 localhost。";
+  if (!canUseCrypto()) {
+    showSendError("本地加密需要 HTTPS 或 localhost。");
     return;
   }
 
   sendButton.disabled = true;
-  sendButton.textContent = "生成中…";
+  sendButton.textContent = "生成中...";
 
   try {
     const code = await createAndSend(text);
@@ -108,10 +91,7 @@ async function handleSend() {
     sendResult.classList.remove("hidden");
     renderQr(code);
   } catch (error) {
-    sendResult.classList.remove("hidden");
-    shareCode.textContent = "失败";
-    countdown.textContent = error.message || "生成失败";
-    clearQr();
+    showSendError(error.message || "生成失败");
   } finally {
     sendButton.disabled = false;
     sendButton.textContent = "生成接收码";
@@ -142,20 +122,32 @@ async function createAndSend(text) {
   throw new Error("接收码生成失败，请重试");
 }
 
-async function handleReceive() {
+function showSendError(message) {
+  sendResult.classList.remove("hidden");
+  shareCode.textContent = "失败";
+  countdown.textContent = message;
+  clearQr();
+}
+
+async function handleManualDecrypt() {
   const code = getCodeValue();
   if (!/^[A-Z0-9]{6}$/.test(code)) {
-    setReceiveHint("请输入 6 位接收码。");
+    manualState.textContent = "请输入 6 位接收码。";
     return;
   }
+  showReceiveView();
+  await decryptCode(code);
+}
 
-  if (!window.isSecureContext || !globalThis.crypto?.subtle) {
-    setReceiveHint("本地解密需要 HTTPS 或 localhost。");
+async function decryptCode(code) {
+  decryptedText = "";
+  copyButton.classList.add("hidden");
+  receiveState.textContent = "正在本地解密...";
+
+  if (!canUseCrypto()) {
+    receiveState.textContent = "本地解密需要 HTTPS 或 localhost。";
     return;
   }
-
-  setReceiveHint("正在本地解密…");
-  receiveResult.classList.add("hidden");
 
   try {
     const locator = code.slice(0, 3);
@@ -168,21 +160,30 @@ async function handleReceive() {
     const payload = await fetchResponse.json();
     if (!fetchResponse.ok) throw new Error(payload.error || "读取失败");
 
-    const text = await decryptText(payload, secret);
+    decryptedText = await decryptText(payload, secret);
     await fetch("/api/clips/read", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ locator }),
     });
 
-    const copied = await copyText(text);
-    receivedText.textContent = text;
-    receiveResult.classList.remove("hidden");
     clearCodeCells();
-    setReceiveHint(copied ? "文本读取成功，已复制到本地剪贴板。" : "复制失败，请手动复制文本。");
+    setUrlCode("");
+    receiveState.textContent = "解密成功，点击复制到本地剪贴板。";
+    copyButton.classList.remove("hidden");
   } catch (error) {
-    setReceiveHint(error.message || "解密失败");
+    receiveState.textContent = error.message || "解密失败";
   }
+}
+
+async function handleCopy() {
+  if (!decryptedText) {
+    receiveState.textContent = "没有可复制的文本。";
+    return;
+  }
+
+  const copied = await copyText(decryptedText);
+  receiveState.textContent = copied ? "已复制到本地剪贴板。" : "复制失败，请长按页面手动复制。";
 }
 
 function startCountdown(expiresAt) {
@@ -197,7 +198,7 @@ function startCountdown(expiresAt) {
       countdown.textContent = "文本已销毁";
       return;
     }
-    countdown.textContent = `${Math.ceil(ms / 1000)} 秒后失效`;
+    countdown.textContent = `${Math.ceil(ms / 1000)} 秒后文本销毁`;
   }
 }
 
@@ -206,7 +207,7 @@ function wireCodeCells() {
     cell.addEventListener("input", () => {
       cell.value = normalizeChar(cell.value);
       if (cell.value && index < codeCells.length - 1) codeCells[index + 1].focus();
-      if (getCodeValue().length === 6) setReceiveHint("接收码完整，可点击解密并复制。");
+      if (getCodeValue().length === 6) manualState.textContent = "接收码完整，可点击解密文本。";
     });
     cell.addEventListener("keydown", (event) => {
       if (event.key === "Backspace" && !cell.value && index > 0) codeCells[index - 1].focus();
@@ -215,94 +216,17 @@ function wireCodeCells() {
     });
     cell.addEventListener("paste", (event) => {
       event.preventDefault();
-      fillCodeCells((event.clipboardData?.getData("text") || ""));
+      fillCodeCells(event.clipboardData?.getData("text") || "");
     });
   });
-}
-
-function setupScannerSupport() {
-  if ("BarcodeDetector" in window) {
-    try {
-      barcodeDetector = new BarcodeDetector({ formats: ["qr_code"] });
-      scannerPlaceholder.textContent = "点击“扫码识别”后对准二维码";
-    } catch {
-      scannerPlaceholder.textContent = "当前浏览器不支持扫码识别";
-    }
-  } else {
-    scannerPlaceholder.textContent = "当前浏览器不支持扫码识别";
-  }
-}
-
-async function startScanner() {
-  if (!barcodeDetector) return;
-  if (!navigator.mediaDevices?.getUserMedia) {
-    scannerPlaceholder.textContent = "当前设备不支持摄像头调用";
-    return;
-  }
-
-  stopScanner();
-  try {
-    scannerStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } },
-      audio: false,
-    });
-    scannerVideo.srcObject = scannerStream;
-    await scannerVideo.play();
-    scannerPlaceholder.classList.add("hidden");
-    scanLoop();
-  } catch {
-    scannerPlaceholder.textContent = "摄像头打开失败，请检查权限";
-    scannerPlaceholder.classList.remove("hidden");
-  }
-}
-
-function scanLoop() {
-  stopScanLoopOnly();
-  scanLoopTimer = window.setInterval(async () => {
-    if (!barcodeDetector || !scannerVideo.videoWidth) return;
-    try {
-      const codes = await barcodeDetector.detect(scannerVideo);
-      const hit = codes.find((item) => normalizeScannedCode(item.rawValue));
-      if (!hit) return;
-      const code = normalizeScannedCode(hit.rawValue);
-      if (!code) return;
-      fillCodeCells(code);
-      setReceiveHint("扫码成功，已自动填入接收码。");
-      showManualPanel();
-    } catch {
-      // Ignore transient scanner errors.
-    }
-  }, 500);
-}
-
-function stopScanLoopOnly() {
-  if (scanLoopTimer) {
-    clearInterval(scanLoopTimer);
-    scanLoopTimer = null;
-  }
-}
-
-function stopScanner() {
-  stopScanLoopOnly();
-  if (scannerStream) {
-    scannerStream.getTracks().forEach((track) => track.stop());
-    scannerStream = null;
-  }
-  if (scannerVideo.srcObject) {
-    scannerVideo.srcObject = null;
-  }
-  scannerPlaceholder.classList.remove("hidden");
-}
-
-function normalizeScannedCode(raw) {
-  return (raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
 
 function fillCodeCells(raw) {
-  const chars = normalizeScannedCode(raw).split("");
+  const chars = normalizeCode(raw).split("");
   codeCells.forEach((cell, index) => {
     cell.value = chars[index] || "";
   });
+  if (chars.length === 6) manualState.textContent = "接收码完整，可点击解密文本。";
 }
 
 function getCodeValue() {
@@ -315,12 +239,12 @@ function clearCodeCells() {
   });
 }
 
-function normalizeChar(value) {
-  return (value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 1);
+function normalizeCode(value) {
+  return (value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
 
-function setReceiveHint(message) {
-  receiveState.innerHTML = `<p class="status-text">${escapeHtml(message)}</p>`;
+function normalizeChar(value) {
+  return normalizeCode(value).slice(0, 1);
 }
 
 function spacedCode(code) {
@@ -334,6 +258,20 @@ function renderQr(code) {
 
 function clearQr() {
   qrImage.removeAttribute("src");
+}
+
+function canUseCrypto() {
+  return window.isSecureContext && Boolean(globalThis.crypto?.subtle);
+}
+
+function setUrlCode(code) {
+  const url = new URL(window.location.href);
+  if (code) {
+    url.searchParams.set("code", code);
+  } else {
+    url.searchParams.delete("code");
+  }
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 function randomChars(length) {
@@ -429,13 +367,4 @@ function bytesFromBase64(value) {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return bytes;
-}
-
-function escapeHtml(value) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
 }
