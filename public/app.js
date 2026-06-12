@@ -26,6 +26,8 @@ let manualCountdownTimer = null;
 let manualCheckId = 0;
 let decryptedText = "";
 let manualPayload = null;
+let currentShareUrl = "";
+let countdownHoldUntil = 0;
 
 bootstrap();
 
@@ -47,6 +49,12 @@ function bootstrap() {
   receiveToSendButton.addEventListener("click", showSendView);
   manualToSendButton.addEventListener("click", showSendView);
   input.addEventListener("input", updateSendButtonState);
+  shareCode.addEventListener("click", handleShareCodeCopy);
+  shareCode.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleShareCodeCopy();
+  });
   wireCodeCells();
   updateSendButtonState();
 }
@@ -84,12 +92,12 @@ async function handleSend() {
   }
 
   if (!canUseCrypto()) {
-    showSendError("本地加密需要 HTTPS 或 localhost。");
+    showSendError("本地加密需要 HTTPS 或 localhost");
     return;
   }
 
   sendButton.disabled = true;
-  sendButton.textContent = "生成中...";
+  sendButton.textContent = "生成中";
 
   try {
     const code = await createAndSend(text);
@@ -155,7 +163,7 @@ async function decryptCode(code) {
   decryptedText = "";
   renderDecryptedText("");
   updateCopyButtonState(false);
-  setReceiveMessage("正在本地解密...");
+  setReceiveMessage("正在本地解密");
 
   if (!canUseCrypto()) {
     setReceiveMessage("本地解密需要 HTTPS 或 localhost", true);
@@ -206,6 +214,7 @@ function startCountdown(expiresAt) {
       markSendResultExpired();
       return;
     }
+    if (Date.now() < countdownHoldUntil) return;
     countdown.textContent = `${Math.ceil(ms / 1000)} 秒后销毁`;
   }
 }
@@ -237,6 +246,18 @@ function clearManualCountdown() {
 
 function wireCodeCells() {
   codeCells.forEach((cell, index) => {
+    cell.addEventListener("focus", () => {
+      cell.select();
+    });
+    cell.addEventListener("beforeinput", (event) => {
+      if (event.inputType !== "insertText") return;
+      const value = normalizeChar(event.data || "");
+      if (!value) return;
+      event.preventDefault();
+      cell.value = value;
+      if (index < codeCells.length - 1) codeCells[index + 1].focus();
+      handleCodeInputChange();
+    });
     cell.addEventListener("input", () => {
       cell.value = normalizeChar(cell.value);
       if (cell.value && index < codeCells.length - 1) codeCells[index + 1].focus();
@@ -291,7 +312,7 @@ function handleCodeInputChange() {
 
 async function validateManualCode(code) {
   const checkId = ++manualCheckId;
-  setManualMessage("正在校验接收码...");
+  setManualMessage("正在校验接收码");
 
   if (!canUseCrypto()) {
     setManualMessage("本地解密需要 HTTPS 或 localhost", true);
@@ -325,23 +346,35 @@ function spacedCode(code) {
 }
 
 function renderQr(code) {
-  const shareUrl = `${APP_ORIGIN}/?code=${encodeURIComponent(code)}`;
+  currentShareUrl = `${APP_ORIGIN}/?code=${encodeURIComponent(code)}`;
   shareCode.classList.remove("line-through", "opacity-35");
   qrImage.classList.remove("hidden");
   qrExpired.classList.add("hidden");
-  qrImage.src = `/api/qr?text=${encodeURIComponent(shareUrl)}`;
+  qrImage.src = `/api/qr?text=${encodeURIComponent(currentShareUrl)}`;
 }
 
 function clearQr() {
+  currentShareUrl = "";
   qrImage.removeAttribute("src");
   qrImage.classList.add("hidden");
   qrExpired.classList.add("hidden");
 }
 
 function markSendResultExpired() {
+  currentShareUrl = "";
   shareCode.classList.add("line-through", "opacity-35");
   qrImage.classList.add("hidden");
   qrExpired.classList.remove("hidden");
+}
+
+async function handleShareCodeCopy() {
+  if (!currentShareUrl) {
+    countdown.textContent = "接收码已销毁";
+    return;
+  }
+  const copied = await copyText(currentShareUrl);
+  countdownHoldUntil = Date.now() + 1600;
+  countdown.textContent = copied ? "接收链接已复制" : "复制失败，请长按页面手动复制";
 }
 
 function focusSendResult() {
@@ -458,7 +491,7 @@ async function decryptText(payload, secret) {
     );
     return new TextDecoder().decode(plaintext);
   } catch {
-    throw new Error("接收码错误，或内容已失效。");
+    throw new Error("接收码错误，或内容已失效");
   }
 }
 
