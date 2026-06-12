@@ -113,7 +113,6 @@ async function handleSend() {
     shareCode.textContent = spacedCode(code);
     sendResult.classList.remove("hidden");
     renderQr(code);
-    focusSendResult();
   } catch (error) {
     showSendError(error.message || "生成失败");
   } finally {
@@ -377,26 +376,6 @@ async function handleShareCodeCopy() {
   const copied = await copyText(currentShareUrl);
   countdownHoldUntil = Date.now() + 1600;
   countdown.textContent = copied ? "已复制接收码" : "复制失败，请长按页面手动复制";
-}
-
-function focusSendResult() {
-  const targetTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-  smoothScrollTo(targetTop, 1000);
-}
-
-function smoothScrollTo(targetTop, duration) {
-  const startTop = window.scrollY;
-  const distance = targetTop - startTop;
-  const startedAt = performance.now();
-
-  function tick(now) {
-    const progress = Math.min(1, (now - startedAt) / duration);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    window.scrollTo(0, startTop + distance * eased);
-    if (progress < 1) window.requestAnimationFrame(tick);
-  }
-
-  window.requestAnimationFrame(tick);
 }
 
 async function loadAndDecrypt(code) {
