@@ -196,10 +196,11 @@ function serveFile(res, filePath) {
         return resolve();
       }
       const ext = path.extname(filePath).toLowerCase();
+      const cacheControl = ext === ".html" || ext === ".js" ? "no-store" : "public, max-age=300";
       res.writeHead(200, {
         "Content-Type": mimeTypes[ext] || "application/octet-stream",
         "Content-Length": data.length,
-        "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=300",
+        "Cache-Control": cacheControl,
       });
       res.end(data);
       resolve();

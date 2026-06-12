@@ -1,6 +1,6 @@
 {
   "name": "clipboard-h5",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Minimal encrypted clipboard H5 with 60-second expiry",
   "scripts": {
