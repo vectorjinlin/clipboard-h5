@@ -86,7 +86,7 @@ function showManualView() {
   setUrlCode("");
   manualPayload = null;
   clearManualCountdown();
-  setManualMessage("输入完整接收码后解密");
+  setManualMessage("请输入六位接收码");
   updateDecryptButtonState(false);
 }
 
@@ -314,7 +314,7 @@ function handleCodeInputChange() {
   setCodeCellsValid(false);
 
   if (!code) {
-    setManualMessage("输入完整接收码后解密");
+    setManualMessage("请输入六位接收码");
     return;
   }
   if (code.length < 6) {
