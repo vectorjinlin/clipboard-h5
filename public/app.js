@@ -299,6 +299,7 @@ function clearCodeCells() {
   codeCells.forEach((cell) => {
     cell.value = "";
   });
+  setCodeCellsValid(false);
 }
 
 function handleCodeInputChange() {
@@ -306,6 +307,7 @@ function handleCodeInputChange() {
   manualPayload = null;
   clearManualCountdown();
   updateDecryptButtonState(false);
+  setCodeCellsValid(false);
 
   if (!code) {
     setManualMessage("输入完整接收码后解密");
@@ -332,11 +334,13 @@ async function validateManualCode(code) {
     if (checkId !== manualCheckId || getCodeValue() !== code) return;
     manualPayload = result;
     updateDecryptButtonState(true);
+    setCodeCellsValid(true);
     startManualCountdown(result.expiresAt);
   } catch (error) {
     if (checkId !== manualCheckId || getCodeValue() !== code) return;
     manualPayload = null;
     updateDecryptButtonState(false);
+    setCodeCellsValid(false);
     setManualMessage(error.message || "接收码错误", true);
   }
 }
@@ -380,8 +384,7 @@ function focusSendResult() {
   void sendResult.offsetWidth;
   sendResult.classList.add("result-focus-in");
   window.requestAnimationFrame(() => {
-    const qrBottom = qrImage.getBoundingClientRect().bottom + window.scrollY;
-    const targetTop = Math.max(0, qrBottom - window.innerHeight + 18);
+    const targetTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
     window.scrollTo({
       top: targetTop,
       behavior: "smooth",
@@ -434,6 +437,12 @@ function updateDecryptButtonState(enabled) {
   decryptButton.disabled = !enabled;
   decryptButton.classList.toggle("opacity-35", !enabled);
   decryptButton.classList.toggle("cursor-not-allowed", !enabled);
+}
+
+function setCodeCellsValid(isValid) {
+  codeCells.forEach((cell) => {
+    cell.classList.toggle("code-cell-valid", isValid);
+  });
 }
 
 function setReceiveMessage(message, isError = false) {
