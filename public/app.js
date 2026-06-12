@@ -1,4 +1,4 @@
-const VERSION = "0.3.1";
+const VERSION = "0.3.2";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
@@ -16,13 +16,18 @@ const decryptButton = document.getElementById("decrypt-button");
 const copyButton = document.getElementById("copy-button");
 const receiveState = document.getElementById("receive-state");
 const manualState = document.getElementById("manual-state");
+const decryptedCard = document.getElementById("decrypted-card");
 const decryptedTextEl = document.getElementById("decrypted-text");
+const decryptedMeta = document.getElementById("decrypted-meta");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
 const homeHelp = document.getElementById("home-help");
 const homeHelpButton = document.getElementById("home-help-button");
 const homeHelpClose = document.getElementById("home-help-close");
-const statsUses = document.getElementById("stats-uses");
-const statsIps = document.getElementById("stats-ips");
+const appFooter = document.getElementById("app-footer");
+const statsModal = document.getElementById("stats-modal");
+const statsClose = document.getElementById("stats-close");
+const statsSummary = document.getElementById("stats-summary");
+const statsList = document.getElementById("stats-list");
 const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
@@ -32,6 +37,8 @@ let decryptedText = "";
 let manualPayload = null;
 let currentShareUrl = "";
 let countdownHoldUntil = 0;
+let footerTapCount = 0;
+let footerTapTimer = null;
 
 bootstrap();
 
@@ -60,6 +67,11 @@ function bootstrap() {
     window.localStorage.setItem("home-screen-help-dismissed", "true");
     homeHelp.classList.add("hidden");
   });
+  appFooter.addEventListener("click", handleFooterTap);
+  statsClose.addEventListener("click", closeStatsModal);
+  statsModal.addEventListener("click", (event) => {
+    if (event.target === statsModal) closeStatsModal();
+  });
   shareCode.addEventListener("click", handleShareCodeCopy);
   shareCode.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -68,7 +80,6 @@ function bootstrap() {
   });
   wireCodeCells();
   lockViewportZoom();
-  loadStats();
   updateSendButtonState();
 }
 
@@ -145,7 +156,6 @@ async function createAndSend(text) {
     if (response.status === 409) continue;
     if (!response.ok) throw new Error(data.error || "生成失败");
     startCountdown(data.expiresAt);
-    loadStats();
     return locator + secret;
   }
   throw new Error("接收码生成失败，请重试");
@@ -193,10 +203,10 @@ async function decryptCode(code) {
 
 async function showDecryptedResult(result) {
   decryptedText = result.text;
-  renderDecryptedText(decryptedText);
+  showReceiveView();
+  await renderDecryptedText(decryptedText);
   updateCopyButtonState(true);
   setReceiveMessage("点击复制到本地剪贴板");
-  showReceiveView();
   await consumeClip(result.locator);
   clearCodeCells();
   clearManualCountdown();
@@ -413,7 +423,18 @@ async function consumeClip(locator) {
 
 function renderDecryptedText(value) {
   decryptedTextEl.textContent = value;
-  decryptedTextEl.classList.toggle("hidden", !value);
+  decryptedMeta.textContent = value ? `${countCharacters(value)} 字符` : "";
+  decryptedCard.classList.toggle("hidden", !value);
+  decryptedCard.classList.remove("is-visible");
+  if (!value) return Promise.resolve();
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        decryptedCard.classList.add("is-visible");
+        window.setTimeout(resolve, 260);
+      });
+    });
+  });
 }
 
 function updateSendButtonState() {
@@ -482,16 +503,83 @@ function preventZoom(event) {
   event.preventDefault();
 }
 
-async function loadStats() {
+async function handleFooterTap() {
+  footerTapCount += 1;
+  clearTimeout(footerTapTimer);
+  footerTapTimer = setTimeout(() => {
+    footerTapCount = 0;
+  }, 700);
+
+  if (footerTapCount < 3) return;
+  footerTapCount = 0;
+  clearTimeout(footerTapTimer);
+  await openStatsModal();
+}
+
+async function openStatsModal() {
+  statsModal.classList.add("is-open");
+  statsSummary.textContent = "正在读取";
+  statsList.innerHTML = "";
+
   try {
-    const response = await fetch("/api/stats", { cache: "no-store" });
-    if (!response.ok) return;
+    const response = await fetch("/api/visits", { cache: "no-store" });
+    if (!response.ok) throw new Error("读取失败");
     const data = await response.json();
-    statsUses.textContent = String(data.totalUses ?? "--");
-    statsIps.textContent = String(data.ipCount ?? "--");
+    statsSummary.textContent = `访问 ${data.totalVisits ?? 0} 次 · IP ${data.ipCount ?? 0} 个 · 发送 ${data.totalUses ?? 0} 次`;
+    renderVisitRows(data.recentVisits || []);
   } catch {
-    // Stats are non-critical.
+    statsSummary.textContent = "读取失败";
+    statsList.innerHTML = `<p class="rounded-2xl bg-white/55 px-4 py-3 text-sm font-semibold text-[#b5472f]">无法读取最近访问</p>`;
   }
+}
+
+function closeStatsModal() {
+  statsModal.classList.remove("is-open");
+}
+
+function renderVisitRows(visits) {
+  if (!visits.length) {
+    statsList.innerHTML = `<p class="rounded-2xl bg-white/55 px-4 py-3 text-sm font-semibold text-[#847b6c]">暂无访问记录</p>`;
+    return;
+  }
+
+  statsList.innerHTML = visits.map((visit, index) => {
+    const time = formatVisitTime(visit.time);
+    return `
+      <article class="rounded-2xl border border-white/70 bg-white/55 px-4 py-3 text-left">
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-sm font-extrabold text-[#181714]">#${index + 1} ${escapeHtml(visit.ip || "未知 IP")}</p>
+          <p class="shrink-0 text-xs font-semibold text-[#847b6c]">${escapeHtml(time)}</p>
+        </div>
+        <p class="mt-1 text-sm font-semibold text-[#847b6c]">${escapeHtml(visit.region || "未知地区")}</p>
+      </article>
+    `;
+  }).join("");
+}
+
+function formatVisitTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function countCharacters(value) {
+  return Array.from(value || "").length;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[char]);
 }
 
 function randomChars(length) {

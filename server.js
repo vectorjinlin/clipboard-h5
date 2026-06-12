@@ -11,6 +11,7 @@ const port = Number(env.PORT || process.env.PORT || 8788);
 const appBaseUrl = env.APP_BASE_URL || process.env.APP_BASE_URL || `http://localhost:${port}`;
 const ttlSeconds = Math.max(5, Number(env.TTL_SECONDS || process.env.TTL_SECONDS || 60));
 const maxTextBytes = Math.max(1024, Number(env.MAX_TEXT_BYTES || process.env.MAX_TEXT_BYTES || 65536));
+const maxRecentVisits = 30;
 
 const store = new Map();
 const stats = loadStats();
@@ -31,7 +32,7 @@ const mimeTypes = {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    trackIp(req);
+    if (req.method === "GET" && url.pathname === "/") trackVisit(req);
 
     if (req.method === "GET" && url.pathname === "/api/health") {
       return sendJson(res, 200, {
@@ -44,6 +45,10 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/stats") {
       return sendJson(res, 200, getPublicStats());
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/visits") {
+      return sendJson(res, 200, getVisitStats());
     }
 
     if (req.method === "GET" && url.pathname === "/api/qr") {
@@ -136,13 +141,42 @@ function getPublicStats() {
   };
 }
 
-function trackIp(req) {
+function getVisitStats() {
+  return {
+    totalUses: stats.totalUses,
+    totalVisits: stats.totalVisits,
+    ipCount: stats.ipHashes.length,
+    recentVisits: stats.recentVisits.slice(0, maxRecentVisits).map((visit) => ({
+      time: visit.time,
+      ip: visit.ip,
+      region: visit.region || "未知地区",
+    })),
+  };
+}
+
+function trackVisit(req) {
   const ip = getClientIp(req);
   if (!ip) return;
   const key = hashIp(ip);
-  if (stats.ipHashes.includes(key)) return;
-  stats.ipHashes.push(key);
+  const now = new Date().toISOString();
+  const region = getCachedRegion(ip);
+
+  stats.totalVisits += 1;
+  if (!stats.ipHashes.includes(key)) stats.ipHashes.push(key);
+  stats.recentVisits.unshift({ time: now, ip, region });
+  stats.recentVisits = stats.recentVisits.slice(0, maxRecentVisits);
   saveStats();
+
+  if (region === "未知地区") {
+    resolveRegion(ip).then((resolvedRegion) => {
+      if (!resolvedRegion || resolvedRegion === "未知地区") return;
+      stats.geoCache[hashIp(ip)] = resolvedRegion;
+      for (const visit of stats.recentVisits) {
+        if (visit.ip === ip && visit.region === "未知地区") visit.region = resolvedRegion;
+      }
+      saveStats();
+    }).catch(() => {});
+  }
 }
 
 function getClientIp(req) {
@@ -165,11 +199,18 @@ function loadStats() {
     const parsed = JSON.parse(fs.readFileSync(statsFile, "utf8"));
     return {
       totalUses: Number(parsed.totalUses) || 0,
+      totalVisits: Number(parsed.totalVisits) || 0,
       ipHashes: Array.isArray(parsed.ipHashes) ? parsed.ipHashes.filter((item) => typeof item === "string") : [],
+      recentVisits: Array.isArray(parsed.recentVisits) ? parsed.recentVisits.filter(isValidVisit).slice(0, maxRecentVisits) : [],
+      geoCache: parsed.geoCache && typeof parsed.geoCache === "object" ? parsed.geoCache : {},
     };
   } catch {
-    return { totalUses: 0, ipHashes: [] };
+    return { totalUses: 0, totalVisits: 0, ipHashes: [], recentVisits: [], geoCache: {} };
   }
+}
+
+function isValidVisit(item) {
+  return item && typeof item === "object" && typeof item.time === "string" && typeof item.ip === "string";
 }
 
 function saveStats() {
@@ -232,6 +273,37 @@ async function handleQr(url, res) {
 function normalizeLocator(value) {
   const normalized = typeof value === "string" ? value.trim().toUpperCase() : "";
   return /^[A-Z0-9]{3}$/.test(normalized) ? normalized : "";
+}
+
+function getCachedRegion(ip) {
+  if (isPrivateIp(ip)) return "局域网";
+  return stats.geoCache[hashIp(ip)] || "未知地区";
+}
+
+async function resolveRegion(ip) {
+  if (isPrivateIp(ip)) return "局域网";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2500);
+  try {
+    const response = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,regionName,city`, {
+      signal: controller.signal,
+    });
+    if (!response.ok) return "未知地区";
+    const data = await response.json();
+    if (data.status !== "success") return "未知地区";
+    return [data.country, data.regionName, data.city].filter(Boolean).join(" · ") || "未知地区";
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function isPrivateIp(ip) {
+  if (!ip) return true;
+  if (ip === "127.0.0.1" || ip === "::1") return true;
+  if (ip.startsWith("10.") || ip.startsWith("192.168.")) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)) return true;
+  if (ip.startsWith("fc") || ip.startsWith("fd") || ip.startsWith("fe80:")) return true;
+  return false;
 }
 
 function pruneExpired() {
