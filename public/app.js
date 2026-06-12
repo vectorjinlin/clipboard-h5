@@ -18,6 +18,9 @@ const receiveState = document.getElementById("receive-state");
 const manualState = document.getElementById("manual-state");
 const decryptedTextEl = document.getElementById("decrypted-text");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
+const homeHelp = document.getElementById("home-help");
+const homeHelpButton = document.getElementById("home-help-button");
+const homeHelpClose = document.getElementById("home-help-close");
 const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
@@ -48,6 +51,13 @@ function bootstrap() {
   receiveToSendButton.addEventListener("click", showSendView);
   manualToSendButton.addEventListener("click", showSendView);
   input.addEventListener("input", updateSendButtonState);
+  homeHelpButton.addEventListener("click", () => {
+    homeHelp.classList.toggle("hidden");
+  });
+  homeHelpClose.addEventListener("click", () => {
+    window.localStorage.setItem("home-screen-help-dismissed", "true");
+    homeHelp.classList.add("hidden");
+  });
   shareCode.addEventListener("click", handleShareCodeCopy);
   shareCode.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -228,7 +238,7 @@ function startManualCountdown(expiresAt) {
       clearManualCountdown();
       manualPayload = null;
       updateDecryptButtonState(false);
-      setManualMessage("接收码输入错误（不存在或已过期）", true);
+      setManualMessage("接收码输入错误（不存在、已销毁）", true);
       return;
     }
     setManualMessage(`接收码正确，${Math.ceil(ms / 1000)} 秒后销毁`);

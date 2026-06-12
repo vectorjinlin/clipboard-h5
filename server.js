@@ -115,7 +115,7 @@ async function handleFetchClip(req, res) {
 
   const entry = store.get(locator);
   if (!entry) {
-    return sendJson(res, 404, { error: "接收码输入错误（不存在或已过期）" });
+    return sendJson(res, 404, { error: "接收码输入错误（不存在、已销毁）" });
   }
 
   return sendJson(res, 200, {
@@ -135,7 +135,7 @@ async function handleConsumeClip(req, res) {
 
   const entry = store.get(locator);
   if (!entry) {
-    return sendJson(res, 404, { error: "接收码输入错误（不存在或已过期）" });
+    return sendJson(res, 404, { error: "接收码输入错误（不存在、已销毁）" });
   }
 
   store.delete(locator);
