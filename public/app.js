@@ -1,4 +1,4 @@
-const VERSION = "0.3.2";
+const VERSION = "0.3.3";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
@@ -80,6 +80,7 @@ function bootstrap() {
   });
   wireCodeCells();
   lockViewportZoom();
+  recordVisit();
   updateSendButtonState();
 }
 
@@ -530,6 +531,14 @@ async function openStatsModal() {
   } catch {
     statsSummary.textContent = "读取失败";
     statsList.innerHTML = `<p class="rounded-2xl bg-white/55 px-4 py-3 text-sm font-semibold text-[#b5472f]">无法读取最近访问</p>`;
+  }
+}
+
+async function recordVisit() {
+  try {
+    await fetch("/api/visit", { method: "POST", cache: "no-store" });
+  } catch {
+    // Visit stats are non-critical.
   }
 }
 

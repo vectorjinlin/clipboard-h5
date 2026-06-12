@@ -32,8 +32,6 @@ const mimeTypes = {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    if (req.method === "GET" && url.pathname === "/") trackVisit(req);
-
     if (req.method === "GET" && url.pathname === "/api/health") {
       return sendJson(res, 200, {
         ok: true,
@@ -48,6 +46,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/visits") {
+      return sendJson(res, 200, getVisitStats());
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/visit") {
+      trackVisit(req);
       return sendJson(res, 200, getVisitStats());
     }
 
