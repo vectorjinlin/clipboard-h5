@@ -4,9 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>947剪贴板</title>
-  <link rel="icon" href="/icon.png?v=20260612-2" type="image/png">
-  <link rel="shortcut icon" href="/icon.png?v=20260612-2" type="image/png">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260612-2">
+  <meta name="application-name" content="947剪贴板">
+  <meta name="apple-mobile-web-app-title" content="947剪贴板">
+  <link rel="manifest" href="/manifest.webmanifest?v=20260612-4">
+  <link rel="icon" href="/icon.png?v=20260612-4" type="image/png">
+  <link rel="shortcut icon" href="/favicon.ico?v=20260612-4">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260612-4">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
@@ -111,7 +114,7 @@
 
     <section id="manual-view" class="hidden flex flex-1 flex-col justify-start pt-12 sm:pt-16">
       <div class="mb-6">
-        <h1 class="text-4xl font-extrabold tracking-tight">输入接收码</h1>
+        <h1 class="text-4xl font-extrabold tracking-tight">接收加密文本</h1>
       </div>
 
       <div class="grid grid-cols-6 gap-2 sm:gap-3">
@@ -123,7 +126,7 @@
         <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-extrabold uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
       </div>
 
-      <button id="decrypt-button" class="mt-6 w-full rounded-2xl bg-[#181714] px-5 py-4 text-lg font-extrabold text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>解密文本</button>
+      <button id="decrypt-button" class="mt-6 w-full rounded-2xl bg-[#181714] px-5 py-4 text-lg font-extrabold text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>解密并显示文本</button>
       <p id="manual-state" class="mt-4 min-h-6 text-center text-sm font-semibold text-[#847b6c]">请输入六位接收码</p>
 
       <div class="mt-8 flex justify-center">

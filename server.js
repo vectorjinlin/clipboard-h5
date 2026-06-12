@@ -22,7 +22,9 @@ const mimeTypes = {
   ".css": "text/css; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".png": "image/png",
+  ".ico": "image/x-icon",
   ".svg": "image/svg+xml",
 };
 
@@ -49,11 +51,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/favicon.ico") {
-      return await serveFile(res, path.join(publicDir, "icon.png"));
+      return await serveFile(res, path.join(publicDir, "favicon.ico"));
     }
 
     if (req.method === "GET" && url.pathname === "/apple-touch-icon.png") {
-      return await serveFile(res, path.join(publicDir, "icon.png"));
+      return await serveFile(res, path.join(publicDir, "apple-touch-icon.png"));
     }
 
     if (req.method === "POST" && url.pathname === "/api/clips") {
