@@ -241,7 +241,7 @@ function startManualCountdown(expiresAt) {
       setManualMessage("接收码输入错误（不存在、已销毁）", true);
       return;
     }
-    setManualMessage(`接收码正确，${Math.ceil(ms / 1000)} 秒后销毁`);
+    setManualMessage(`连接成功，${Math.ceil(ms / 1000)} 秒后销毁`);
   }
 }
 
