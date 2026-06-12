@@ -95,6 +95,7 @@ async function handleSend() {
     shareCode.textContent = spacedCode(code);
     sendResult.classList.remove("hidden");
     renderQr(code);
+    focusSendResult();
   } catch (error) {
     showSendError(error.message || "生成失败");
   } finally {
@@ -328,6 +329,18 @@ function renderQr(code) {
 
 function clearQr() {
   qrImage.removeAttribute("src");
+}
+
+function focusSendResult() {
+  sendResult.classList.remove("result-focus-in");
+  void sendResult.offsetWidth;
+  sendResult.classList.add("result-focus-in");
+  window.requestAnimationFrame(() => {
+    sendResult.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
 }
 
 async function loadAndDecrypt(code) {
