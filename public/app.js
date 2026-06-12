@@ -8,6 +8,7 @@ const sendResult = document.getElementById("send-result");
 const shareCode = document.getElementById("share-code");
 const countdown = document.getElementById("countdown");
 const qrImage = document.getElementById("qr-image");
+const qrExpired = document.getElementById("qr-expired");
 const manualEntryButton = document.getElementById("manual-entry-button");
 const receiveToSendButton = document.getElementById("receive-to-send-button");
 const receiveManualButton = document.getElementById("receive-manual-button");
@@ -202,6 +203,7 @@ function startCountdown(expiresAt) {
     if (ms <= 0) {
       clearInterval(countdownTimer);
       countdown.textContent = "已销毁";
+      markSendResultExpired();
       return;
     }
     countdown.textContent = `${Math.ceil(ms / 1000)} 秒后销毁`;
@@ -324,11 +326,22 @@ function spacedCode(code) {
 
 function renderQr(code) {
   const shareUrl = `${APP_ORIGIN}/?code=${encodeURIComponent(code)}`;
+  shareCode.classList.remove("line-through", "opacity-35");
+  qrImage.classList.remove("hidden");
+  qrExpired.classList.add("hidden");
   qrImage.src = `/api/qr?text=${encodeURIComponent(shareUrl)}`;
 }
 
 function clearQr() {
   qrImage.removeAttribute("src");
+  qrImage.classList.add("hidden");
+  qrExpired.classList.add("hidden");
+}
+
+function markSendResultExpired() {
+  shareCode.classList.add("line-through", "opacity-35");
+  qrImage.classList.add("hidden");
+  qrExpired.classList.remove("hidden");
 }
 
 function focusSendResult() {
