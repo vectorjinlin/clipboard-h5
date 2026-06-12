@@ -8,7 +8,6 @@ const sendResult = document.getElementById("send-result");
 const shareCode = document.getElementById("share-code");
 const countdown = document.getElementById("countdown");
 const qrImage = document.getElementById("qr-image");
-const qrExpired = document.getElementById("qr-expired");
 const manualEntryButton = document.getElementById("manual-entry-button");
 const receiveToSendButton = document.getElementById("receive-to-send-button");
 const receiveManualButton = document.getElementById("receive-manual-button");
@@ -35,8 +34,8 @@ function bootstrap() {
   const presetCode = normalizeCode(new URL(window.location.href).searchParams.get("code"));
 
   if (presetCode.length === 6) {
-    showReceiveView();
-    decryptCode(presetCode);
+    showManualView();
+    fillCodeCells(presetCode);
   } else {
     showSendView();
   }
@@ -211,7 +210,6 @@ function startCountdown(expiresAt) {
     if (ms <= 0) {
       clearInterval(countdownTimer);
       countdown.textContent = "已销毁";
-      markSendResultExpired();
       return;
     }
     if (Date.now() < countdownHoldUntil) return;
@@ -347,9 +345,7 @@ function spacedCode(code) {
 
 function renderQr(code) {
   currentShareUrl = `${APP_ORIGIN}/?code=${encodeURIComponent(code)}`;
-  shareCode.classList.remove("line-through", "opacity-35");
   qrImage.classList.remove("hidden");
-  qrExpired.classList.add("hidden");
   qrImage.src = `/api/qr?text=${encodeURIComponent(currentShareUrl)}`;
 }
 
@@ -357,14 +353,6 @@ function clearQr() {
   currentShareUrl = "";
   qrImage.removeAttribute("src");
   qrImage.classList.add("hidden");
-  qrExpired.classList.add("hidden");
-}
-
-function markSendResultExpired() {
-  currentShareUrl = "";
-  shareCode.classList.add("line-through", "opacity-35");
-  qrImage.classList.add("hidden");
-  qrExpired.classList.remove("hidden");
 }
 
 async function handleShareCodeCopy() {
@@ -374,7 +362,7 @@ async function handleShareCodeCopy() {
   }
   const copied = await copyText(currentShareUrl);
   countdownHoldUntil = Date.now() + 1600;
-  countdown.textContent = copied ? "接收链接已复制" : "复制失败，请长按页面手动复制";
+  countdown.textContent = copied ? "已复制接收码" : "复制失败，请长按页面手动复制";
 }
 
 function focusSendResult() {
