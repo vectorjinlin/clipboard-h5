@@ -7,7 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
-      font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-family: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-feature-settings: "tnum";
     }
 
     @keyframes result-focus-in {
@@ -31,16 +32,16 @@
   <main class="mx-auto flex min-h-screen w-full max-w-[560px] flex-col px-5 py-6 sm:px-8">
     <section id="send-view" class="flex flex-1 flex-col justify-center">
       <div class="mb-7">
-        <p class="mb-3 text-sm font-semibold tracking-[0.28em] text-[#847b6c]">60 SECOND CLIPBOARD</p>
-        <h1 class="text-4xl font-black tracking-tight sm:text-5xl">发送文本</h1>
+        <p class="mb-3 text-xs font-semibold tracking-[0.28em] text-[#847b6c]">60 SECOND CLIPBOARD</p>
+        <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl">发送文本</h1>
       </div>
 
       <textarea id="clip-input" class="min-h-[56px] w-full resize-none rounded-2xl border border-[#d4cab9] bg-white/72 px-5 py-3.5 text-center text-xl font-semibold leading-7 shadow-[0_22px_60px_rgba(49,37,20,0.10)] outline-none transition focus:border-[#181714]" placeholder="输入文本内容" rows="1"></textarea>
 
-      <button id="send-button" class="mt-4 min-h-[56px] w-full rounded-2xl bg-[#181714] px-5 py-3.5 text-lg font-black text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>发送</button>
+      <button id="send-button" class="mt-4 min-h-[56px] w-full rounded-2xl bg-[#181714] px-5 py-3.5 text-lg font-extrabold text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>发送</button>
 
       <section id="send-result" class="mt-7 hidden scroll-mt-6 rounded-[28px] border border-white/70 bg-[#f7f3ea]/90 p-5 shadow-[0_22px_60px_rgba(49,37,20,0.10)]" aria-live="polite">
-        <strong id="share-code" class="mx-auto block w-fit max-w-full cursor-pointer select-none whitespace-nowrap rounded-2xl bg-white/55 px-5 py-3 text-center text-4xl font-black tracking-[0.16em] text-[#181714] sm:text-5xl" role="button" tabindex="0" aria-label="复制接收链接">------</strong>
+        <strong id="share-code" class="mx-auto block w-fit max-w-full cursor-pointer select-none whitespace-nowrap rounded-2xl bg-white/55 px-5 py-3 text-center text-4xl font-extrabold tracking-[0.16em] text-[#181714] sm:text-5xl" role="button" tabindex="0" aria-label="复制接收链接">------</strong>
 
         <div class="my-5 flex items-center gap-3 text-sm font-semibold text-[#847b6c]">
           <span class="h-px flex-1 bg-[#d4cab9]"></span>
@@ -60,13 +61,13 @@
     </section>
 
     <section id="receive-view" class="hidden flex flex-1 flex-col justify-center">
-      <div class="rounded-[32px] border border-white/70 bg-[#f7f3ea]/95 p-6 text-center shadow-[0_22px_60px_rgba(49,37,20,0.10)]">
-        <p class="mb-3 text-sm font-semibold tracking-[0.28em] text-[#847b6c]">LOCAL DECRYPTED</p>
-        <h1 class="text-4xl font-black tracking-tight">文本已解密</h1>
-        <pre id="decrypted-text" class="mt-5 hidden max-h-[34vh] overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-[#d4cab9] bg-white/65 p-4 text-center text-lg font-semibold leading-7 text-[#181714]"></pre>
+      <div class="rounded-[34px] border border-white/70 bg-[#f7f3ea]/95 p-5 text-center shadow-[0_22px_60px_rgba(49,37,20,0.10)] sm:p-6">
+        <p class="mb-3 text-xs font-semibold tracking-[0.28em] text-[#847b6c]">LOCAL DECRYPTED</p>
+        <h1 class="text-3xl font-extrabold tracking-tight">文本已解密</h1>
+        <pre id="decrypted-text" class="mt-5 hidden max-h-[38vh] overflow-auto whitespace-pre-wrap break-words rounded-[24px] border border-[#d4cab9] bg-white/70 px-5 py-6 text-center text-xl font-semibold leading-8 text-[#181714]"></pre>
 
-        <button id="copy-button" class="mt-7 w-full rounded-2xl bg-[#181714] px-5 py-5 text-xl font-black text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>复制到剪贴板</button>
-        <p id="receive-state" class="mt-4 min-h-6 text-sm font-semibold text-[#847b6c]">正在本地解密</p>
+        <button id="copy-button" class="mt-5 min-h-[60px] w-full rounded-[24px] bg-[#181714] px-5 py-4 text-xl font-extrabold text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>复制到剪贴板</button>
+        <p id="receive-state" class="mt-3 min-h-6 text-sm font-medium text-[#847b6c]">正在本地解密</p>
       </div>
 
       <div class="mt-8 flex justify-center gap-5 text-sm font-semibold text-[#847b6c]">
@@ -77,21 +78,21 @@
 
     <section id="manual-view" class="hidden flex flex-1 flex-col justify-center">
       <div class="mb-7">
-        <p class="mb-3 text-sm font-semibold tracking-[0.28em] text-[#847b6c]">MANUAL CODE</p>
-        <h1 class="text-4xl font-black tracking-tight">输入接收码</h1>
+        <p class="mb-3 text-xs font-semibold tracking-[0.28em] text-[#847b6c]">MANUAL CODE</p>
+        <h1 class="text-4xl font-extrabold tracking-tight">输入接收码</h1>
       </div>
 
       <label class="mb-3 text-sm font-bold text-[#847b6c]">6 位接收码</label>
       <div class="grid grid-cols-6 gap-2 sm:gap-3">
-        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-black uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
-        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-black uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
-        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-black uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
-        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-black uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
-        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-black uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
-        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-black uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
+        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-extrabold uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
+        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-extrabold uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
+        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-extrabold uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
+        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-extrabold uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
+        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-extrabold uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
+        <input class="code-cell h-16 rounded-2xl border border-[#d4cab9] bg-white/62 text-center text-3xl font-extrabold uppercase outline-none transition focus:border-[#181714]" maxlength="1" autocomplete="off" inputmode="text">
       </div>
 
-      <button id="decrypt-button" class="mt-6 w-full rounded-2xl bg-[#181714] px-5 py-4 text-lg font-black text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>解密文本</button>
+      <button id="decrypt-button" class="mt-6 w-full rounded-2xl bg-[#181714] px-5 py-4 text-lg font-extrabold text-[#f5f1e8] shadow-[0_22px_60px_rgba(49,37,20,0.10)] transition disabled:cursor-not-allowed disabled:opacity-35 active:scale-[0.99]" type="button" disabled>解密文本</button>
       <p id="manual-state" class="mt-4 min-h-6 text-center text-sm font-semibold text-[#847b6c]">输入完整接收码后解密</p>
 
       <div class="mt-8 flex justify-center">
@@ -99,10 +100,10 @@
       </div>
     </section>
 
-    <footer class="pb-1 pt-8 text-center text-sm font-semibold text-[#847b6c]">
-      <h2 class="text-xl font-black text-[#181714]">60秒剪贴板</h2>
-      <p class="mt-2">本地加密 · 跨设备传输 · 自动销毁</p>
-      <p class="mt-1">Developed by @1u1uguru  | Version 0.3.1</p>
+    <footer class="pb-1 pt-6 text-center text-[11px] font-medium leading-5 text-[#847b6c]/60">
+      <h2 class="text-sm font-semibold text-[#181714]/55">60秒剪贴板</h2>
+      <p class="mt-1">本地加密 · 跨设备传输 · 自动销毁</p>
+      <p>Developed by @1u1uguru  | Version 0.3.1</p>
     </footer>
   </main>
 

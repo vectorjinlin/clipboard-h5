@@ -370,9 +370,11 @@ function focusSendResult() {
   void sendResult.offsetWidth;
   sendResult.classList.add("result-focus-in");
   window.requestAnimationFrame(() => {
-    sendResult.scrollIntoView({
+    const qrBottom = qrImage.getBoundingClientRect().bottom + window.scrollY;
+    const targetTop = Math.max(0, qrBottom - window.innerHeight + 18);
+    window.scrollTo({
+      top: targetTop,
       behavior: "smooth",
-      block: "start",
     });
   });
 }
