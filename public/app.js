@@ -64,7 +64,7 @@ function showManualView() {
   setUrlCode("");
   manualPayload = null;
   clearManualCountdown();
-  manualState.textContent = "输入完整接收码后解密。";
+  setManualMessage("输入完整接收码后解密");
   updateDecryptButtonState(false);
 }
 
@@ -138,7 +138,7 @@ function showSendError(message) {
 async function handleManualDecrypt() {
   const code = getCodeValue();
   if (!/^[A-Z0-9]{6}$/.test(code)) {
-    manualState.textContent = "请输入 6 位接收码。";
+    setManualMessage("请输入 6 位接收码", true);
     return;
   }
   if (manualPayload?.code === code) {
@@ -153,10 +153,10 @@ async function decryptCode(code) {
   decryptedText = "";
   renderDecryptedText("");
   updateCopyButtonState(false);
-  receiveState.textContent = "正在本地解密...";
+  setReceiveMessage("正在本地解密...");
 
   if (!canUseCrypto()) {
-    receiveState.textContent = "本地解密需要 HTTPS 或 localhost。";
+    setReceiveMessage("本地解密需要 HTTPS 或 localhost", true);
     return;
   }
 
@@ -164,7 +164,7 @@ async function decryptCode(code) {
     const result = await loadAndDecrypt(code);
     await showDecryptedResult(result);
   } catch (error) {
-    receiveState.textContent = error.message || "解密失败";
+    setReceiveMessage(error.message || "解密失败", true);
   }
 }
 
@@ -178,17 +178,17 @@ async function showDecryptedResult(result) {
   setUrlCode("");
   renderDecryptedText(decryptedText);
   updateCopyButtonState(true);
-  receiveState.textContent = "解密成功，点击复制到本地剪贴板。";
+  setReceiveMessage("点击复制到本地剪贴板");
 }
 
 async function handleCopy() {
   if (!decryptedText) {
-    receiveState.textContent = "没有可复制的文本。";
+    setReceiveMessage("没有可复制的文本", true);
     return;
   }
 
   const copied = await copyText(decryptedText);
-  receiveState.textContent = copied ? "已复制到本地剪贴板。" : "复制失败，请长按页面手动复制。";
+  setReceiveMessage(copied ? "已复制到本地剪贴板" : "复制失败，请长按页面手动复制", !copied);
 }
 
 function startCountdown(expiresAt) {
@@ -200,10 +200,10 @@ function startCountdown(expiresAt) {
     const ms = expiresAt - Date.now();
     if (ms <= 0) {
       clearInterval(countdownTimer);
-      countdown.textContent = "文本已销毁";
+      countdown.textContent = "已销毁";
       return;
     }
-    countdown.textContent = `${Math.ceil(ms / 1000)} 秒后文本销毁`;
+    countdown.textContent = `${Math.ceil(ms / 1000)} 秒后销毁`;
   }
 }
 
@@ -218,10 +218,10 @@ function startManualCountdown(expiresAt) {
       clearManualCountdown();
       manualPayload = null;
       updateDecryptButtonState(false);
-      manualState.textContent = "文本已销毁。";
+      setManualMessage("已销毁", true);
       return;
     }
-    manualState.textContent = `接收码正确，${Math.ceil(ms / 1000)} 秒后文本销毁。`;
+    setManualMessage(`接收码正确，${Math.ceil(ms / 1000)} 秒后销毁`);
   }
 }
 
@@ -256,7 +256,6 @@ function fillCodeCells(raw) {
   codeCells.forEach((cell, index) => {
     cell.value = chars[index] || "";
   });
-  if (chars.length === 6) manualState.textContent = "接收码完整，可点击解密文本。";
   handleCodeInputChange();
 }
 
@@ -277,11 +276,11 @@ function handleCodeInputChange() {
   updateDecryptButtonState(false);
 
   if (!code) {
-    manualState.textContent = "输入完整接收码后解密。";
+    setManualMessage("输入完整接收码后解密");
     return;
   }
   if (code.length < 6) {
-    manualState.textContent = "继续输入接收码。";
+    setManualMessage("继续输入接收码");
     return;
   }
   validateManualCode(code);
@@ -289,10 +288,10 @@ function handleCodeInputChange() {
 
 async function validateManualCode(code) {
   const checkId = ++manualCheckId;
-  manualState.textContent = "正在校验接收码...";
+  setManualMessage("正在校验接收码...");
 
   if (!canUseCrypto()) {
-    manualState.textContent = "本地解密需要 HTTPS 或 localhost。";
+    setManualMessage("本地解密需要 HTTPS 或 localhost", true);
     return;
   }
 
@@ -306,7 +305,7 @@ async function validateManualCode(code) {
     if (checkId !== manualCheckId || getCodeValue() !== code) return;
     manualPayload = null;
     updateDecryptButtonState(false);
-    manualState.textContent = error.message || "接收码错误。";
+    setManualMessage(error.message || "接收码错误", true);
   }
 }
 
@@ -376,6 +375,18 @@ function updateDecryptButtonState(enabled) {
   decryptButton.disabled = !enabled;
   decryptButton.classList.toggle("opacity-35", !enabled);
   decryptButton.classList.toggle("cursor-not-allowed", !enabled);
+}
+
+function setReceiveMessage(message, isError = false) {
+  receiveState.textContent = message;
+  receiveState.classList.toggle("text-[#b5472f]", isError);
+  receiveState.classList.toggle("text-[#847b6c]", !isError);
+}
+
+function setManualMessage(message, isError = false) {
+  manualState.textContent = message;
+  manualState.classList.toggle("text-[#b5472f]", isError);
+  manualState.classList.toggle("text-[#847b6c]", !isError);
 }
 
 function canUseCrypto() {
