@@ -1,9 +1,10 @@
-const VERSION = "0.3.5";
+const VERSION = "0.3.6";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
 const input = document.getElementById("clip-input");
 const sendButton = document.getElementById("send-button");
+const ttlInputs = Array.from(document.querySelectorAll("input[name='ttl-seconds']"));
 const sendResult = document.getElementById("send-result");
 const shareCode = document.getElementById("share-code");
 const countdown = document.getElementById("countdown");
@@ -51,7 +52,7 @@ function bootstrap() {
   const presetCode = normalizeCode(new URL(window.location.href).searchParams.get("code"));
 
   if (presetCode.length === 6) {
-    showManualView();
+    showManualView({ reset: false });
     fillCodeCells(presetCode);
   } else {
     showSendView();
@@ -60,10 +61,10 @@ function bootstrap() {
   sendButton.addEventListener("click", handleSend);
   decryptButton.addEventListener("click", handleManualDecrypt);
   copyButton.addEventListener("click", handleCopy);
-  manualEntryButton.addEventListener("click", showManualView);
-  receiveManualButton.addEventListener("click", showManualView);
-  receiveToSendButton.addEventListener("click", showSendView);
-  manualToSendButton.addEventListener("click", showSendView);
+  manualEntryButton.addEventListener("click", () => showManualView());
+  receiveManualButton.addEventListener("click", () => showManualView());
+  receiveToSendButton.addEventListener("click", () => showSendView());
+  manualToSendButton.addEventListener("click", () => showSendView());
   input.addEventListener("input", updateSendButtonState);
   homeHelpButton.addEventListener("click", () => {
     homeHelp.classList.toggle("hidden");
@@ -95,19 +96,48 @@ function bootstrap() {
   updateSendButtonState();
 }
 
-function showSendView() {
+function showSendView({ reset = true } = {}) {
+  if (reset) resetSendView();
   showOnly(sendView);
   setUrlCode("");
 }
 
-function showReceiveView() {
+function showReceiveView({ reset = false } = {}) {
+  if (reset) resetReceiveView();
   showOnly(receiveView);
 }
 
-function showManualView() {
+function showManualView({ reset = true } = {}) {
+  if (reset) resetManualView();
   showOnly(manualView);
   setUrlCode("");
+}
+
+function resetSendView() {
+  clearInterval(countdownTimer);
+  countdownTimer = null;
+  countdownHoldUntil = 0;
+  input.value = "";
+  sendButton.textContent = "发送";
+  sendResult.classList.add("hidden");
+  shareCode.textContent = "------";
+  countdown.textContent = "";
+  clearQr();
+  selectTtl(600);
+  updateSendButtonState();
+}
+
+function resetReceiveView() {
+  decryptedText = "";
+  renderDecryptedText("");
+  updateCopyButtonState(false);
+  setReceiveMessage("正在本地解密");
+}
+
+function resetManualView() {
   manualPayload = null;
+  manualCheckId += 1;
+  clearCodeCells();
   clearManualCountdown();
   setManualMessage("请输入六位接收码");
   updateDecryptButtonState(false);
@@ -136,7 +166,7 @@ async function handleSend() {
   sendButton.textContent = "生成中";
 
   try {
-    const code = await createAndSend(text);
+    const code = await createAndSend(text, getSelectedTtlSeconds());
     shareCode.textContent = spacedCode(code);
     sendResult.classList.remove("hidden");
     renderQr(code);
@@ -149,7 +179,7 @@ async function handleSend() {
   }
 }
 
-async function createAndSend(text) {
+async function createAndSend(text, ttlSeconds) {
   for (let i = 0; i < 24; i += 1) {
     const locator = randomChars(3);
     const secret = randomChars(3);
@@ -162,6 +192,7 @@ async function createAndSend(text) {
         ciphertext: payload.ciphertext,
         iv: payload.iv,
         salt: payload.salt,
+        ttlSeconds,
       }),
     });
     const data = await response.json();
@@ -249,7 +280,7 @@ function startCountdown(expiresAt) {
       return;
     }
     if (Date.now() < countdownHoldUntil) return;
-    countdown.textContent = `${Math.ceil(ms / 1000)} 秒后销毁`;
+    countdown.textContent = `${formatDuration(ms)}后销毁`;
   }
 }
 
@@ -267,7 +298,7 @@ function startManualCountdown(expiresAt) {
       setManualMessage("接收码输入错误（不存在、已销毁）", true);
       return;
     }
-    setManualMessage(`连接成功，${Math.ceil(ms / 1000)} 秒后销毁`);
+    setManualMessage(`连接成功，${formatDuration(ms)}后销毁`);
   }
 }
 
@@ -450,6 +481,27 @@ function renderDecryptedText(value) {
 
 function updateSendButtonState() {
   sendButton.disabled = !input.value.trim();
+}
+
+function getSelectedTtlSeconds() {
+  const selected = ttlInputs.find((item) => item.checked);
+  const value = Number(selected?.value || 600);
+  return [600, 1800, 3600].includes(value) ? value : 600;
+}
+
+function selectTtl(seconds) {
+  ttlInputs.forEach((item) => {
+    item.checked = Number(item.value) === seconds;
+  });
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  if (totalSeconds < 60) return `${totalSeconds}秒`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (!seconds) return `${minutes}分钟`;
+  return `${minutes}分${String(seconds).padStart(2, "0")}秒`;
 }
 
 function updateCopyButtonState(enabled) {

@@ -9,7 +9,7 @@ const statsFile = path.join(dataDir, "stats.json");
 const env = loadEnv(path.join(__dirname, ".env"));
 const port = Number(env.PORT || process.env.PORT || 8788);
 const appBaseUrl = env.APP_BASE_URL || process.env.APP_BASE_URL || `http://localhost:${port}`;
-const ttlSeconds = Math.max(5, Number(env.TTL_SECONDS || process.env.TTL_SECONDS || 60));
+const defaultTtlSeconds = normalizeTtlSeconds(env.TTL_SECONDS || process.env.TTL_SECONDS || 600);
 const maxTextBytes = Math.max(1024, Number(env.MAX_TEXT_BYTES || process.env.MAX_TEXT_BYTES || 65536));
 const visitWindowMs = 24 * 60 * 60 * 1000;
 const maxStoredVisits = 2000;
@@ -37,7 +37,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/health") {
       return sendJson(res, 200, {
         ok: true,
-        ttlSeconds,
+        ttlSeconds: defaultTtlSeconds,
         activeItems: store.size,
         now: Date.now(),
       });
@@ -107,6 +107,7 @@ async function handleCreateClip(req, res) {
   const ciphertext = typeof body.ciphertext === "string" ? body.ciphertext : "";
   const iv = typeof body.iv === "string" ? body.iv : "";
   const salt = typeof body.salt === "string" ? body.salt : "";
+  const ttlSeconds = normalizeTtlSeconds(body.ttlSeconds);
 
   if (!locator) return sendJson(res, 400, { error: "定位码无效" });
   if (!ciphertext || !iv || !salt) return sendJson(res, 400, { error: "密文参数不完整" });
@@ -310,6 +311,11 @@ async function handleQr(url, res) {
 function normalizeLocator(value) {
   const normalized = typeof value === "string" ? value.trim().toUpperCase() : "";
   return /^[A-Z0-9]{3}$/.test(normalized) ? normalized : "";
+}
+
+function normalizeTtlSeconds(value) {
+  const seconds = Number(value);
+  return [600, 1800, 3600].includes(seconds) ? seconds : 600;
 }
 
 function getCachedRegion(ip) {
