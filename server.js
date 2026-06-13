@@ -156,26 +156,51 @@ function getVisitStats(url = new URL("http://localhost/")) {
   const pageSize = clampInteger(url.searchParams.get("pageSize"), 1, 50, defaultVisitPageSize);
   const page = clampInteger(url.searchParams.get("page"), 1, 9999, 1);
   const visits24h = getVisitsWithinWindow();
-  const totalPages = Math.max(1, Math.ceil(visits24h.length / pageSize));
+  const users24h = getUsersFromVisits(visits24h);
+  const totalPages = Math.max(1, Math.ceil(users24h.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const offset = (safePage - 1) * pageSize;
-  const ipCount24h = new Set(visits24h.map((visit) => hashIp(visit.ip))).size;
 
   return {
     totalUses: stats.totalUses,
     totalVisits: stats.totalVisits,
     totalVisits24h: visits24h.length,
     ipCount: stats.ipHashes.length,
-    ipCount24h,
+    ipCount24h: users24h.length,
     page: safePage,
     pageSize,
     totalPages,
-    recentVisits: visits24h.slice(offset, offset + pageSize).map((visit) => ({
-      time: visit.time,
-      ip: visit.ip,
-      region: visit.region || "未知地区",
-    })),
+    users: users24h.slice(offset, offset + pageSize),
   };
+}
+
+function getUsersFromVisits(visits) {
+  const users = new Map();
+
+  for (const visit of visits) {
+    const key = hashIp(visit.ip);
+    const current = users.get(key);
+    const timeMs = Date.parse(visit.time);
+    if (!current) {
+      users.set(key, {
+        ip: visit.ip,
+        region: visit.region || "未知地区",
+        visitCount24h: 1,
+        lastOperationTime: visit.time,
+      });
+      continue;
+    }
+
+    current.visitCount24h += 1;
+    if (timeMs > Date.parse(current.lastOperationTime)) {
+      current.lastOperationTime = visit.time;
+      current.region = visit.region || current.region;
+    }
+  }
+
+  return Array.from(users.values()).sort((left, right) => (
+    Date.parse(right.lastOperationTime) - Date.parse(left.lastOperationTime)
+  ));
 }
 
 function trackVisit(req) {

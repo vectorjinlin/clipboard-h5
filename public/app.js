@@ -1,4 +1,4 @@
-const VERSION = "1.0.1";
+const VERSION = "1.0.2";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
@@ -649,7 +649,7 @@ async function loadVisitStats(page) {
     statsCurrentPage = data.page || page;
     statsTotalPages = data.totalPages || 1;
     statsSummary.textContent = `24小时访问 ${data.totalVisits24h ?? 0} 次 · IP ${data.ipCount24h ?? 0} 个 · 发送 ${data.totalUses ?? 0} 次`;
-    renderVisitRows(data.recentVisits || [], (statsCurrentPage - 1) * statsPageSize);
+    renderUserRows(data.users || [], (statsCurrentPage - 1) * statsPageSize);
     updateStatsPager(statsCurrentPage, statsTotalPages);
   } catch {
     statsSummary.textContent = "读取失败";
@@ -670,21 +670,22 @@ function closeStatsModal() {
   statsModal.classList.remove("is-open");
 }
 
-function renderVisitRows(visits, offset = 0) {
-  if (!visits.length) {
-    statsList.innerHTML = `<p class="rounded-2xl bg-white/55 px-4 py-3 text-sm font-semibold text-[#847b6c]">最近24小时暂无访问记录</p>`;
+function renderUserRows(users, offset = 0) {
+  if (!users.length) {
+    statsList.innerHTML = `<p class="rounded-2xl bg-white/55 px-4 py-3 text-sm font-semibold text-[#847b6c]">最近24小时暂无用户记录</p>`;
     return;
   }
 
-  statsList.innerHTML = visits.map((visit, index) => {
-    const time = formatVisitTime(visit.time);
+  statsList.innerHTML = users.map((user, index) => {
+    const time = formatVisitTime(user.lastOperationTime);
     return `
       <article class="rounded-2xl border border-white/70 bg-white/55 px-4 py-3 text-left">
         <div class="flex items-center justify-between gap-3">
-          <p class="text-sm font-extrabold text-[#181714]">#${offset + index + 1} ${escapeHtml(visit.ip || "未知 IP")}</p>
-          <p class="shrink-0 text-xs font-semibold text-[#847b6c]">${escapeHtml(time)}</p>
+          <p class="text-sm font-extrabold text-[#181714]">#${offset + index + 1} ${escapeHtml(user.ip || "未知 IP")}</p>
+          <p class="shrink-0 text-xs font-semibold text-[#847b6c]">${escapeHtml(user.visitCount24h ?? 0)} 次</p>
         </div>
-        <p class="mt-1 text-sm font-semibold text-[#847b6c]">${escapeHtml(visit.region || "未知地区")}</p>
+        <p class="mt-1 text-sm font-semibold text-[#847b6c]">${escapeHtml(user.region || "未知地区")}</p>
+        <p class="mt-1 text-xs font-semibold text-[#847b6c]/80">最后操作 ${escapeHtml(time)}</p>
       </article>
     `;
   }).join("");
