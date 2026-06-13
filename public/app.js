@@ -1,4 +1,4 @@
-const VERSION = "0.3.7";
+const VERSION = "0.3.8";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
@@ -39,7 +39,9 @@ let manualCheckId = 0;
 let decryptedText = "";
 let manualPayload = null;
 let currentShareUrl = "";
+let currentShareLocator = "";
 let countdownHoldUntil = 0;
+let shareStatusTimer = null;
 let footerTapCount = 0;
 let footerTapTimer = null;
 let statsCurrentPage = 1;
@@ -116,6 +118,7 @@ function showManualView({ reset = true } = {}) {
 function resetSendView() {
   clearInterval(countdownTimer);
   countdownTimer = null;
+  stopShareStatusPolling();
   countdownHoldUntil = 0;
   input.value = "";
   sendButton.textContent = "发送";
@@ -199,6 +202,7 @@ async function createAndSend(text, ttlSeconds) {
     if (response.status === 409) continue;
     if (!response.ok) throw new Error(data.error || "生成失败");
     startCountdown(data.expiresAt);
+    startShareStatusPolling(locator);
     return locator + secret;
   }
   throw new Error("接收码生成失败，请重试");
@@ -209,6 +213,7 @@ function showSendError(message) {
   shareCode.textContent = "失败";
   countdown.textContent = message;
   clearQr();
+  stopShareStatusPolling();
 }
 
 async function handleManualDecrypt() {
@@ -276,6 +281,7 @@ function startCountdown(expiresAt) {
     const ms = expiresAt - Date.now();
     if (ms <= 0) {
       clearInterval(countdownTimer);
+      stopShareStatusPolling();
       countdown.textContent = "已销毁";
       return;
     }
@@ -415,6 +421,7 @@ function spacedCode(code) {
 }
 
 function renderQr(code) {
+  currentShareLocator = code.slice(0, 3);
   currentShareUrl = `${APP_ORIGIN}/?code=${encodeURIComponent(code)}`;
   qrImage.classList.remove("hidden");
   qrImage.src = `/api/qr?text=${encodeURIComponent(currentShareUrl)}`;
@@ -422,8 +429,53 @@ function renderQr(code) {
 
 function clearQr() {
   currentShareUrl = "";
+  currentShareLocator = "";
   qrImage.removeAttribute("src");
   qrImage.classList.add("hidden");
+}
+
+function startShareStatusPolling(locator) {
+  stopShareStatusPolling();
+  currentShareLocator = locator;
+  shareStatusTimer = setInterval(() => {
+    checkShareStatus(locator);
+  }, 2000);
+}
+
+function stopShareStatusPolling() {
+  if (!shareStatusTimer) return;
+  clearInterval(shareStatusTimer);
+  shareStatusTimer = null;
+}
+
+async function checkShareStatus(locator) {
+  if (!locator || locator !== currentShareLocator) return;
+
+  try {
+    const response = await fetch("/api/clips/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locator }),
+    });
+    if (!response.ok) return;
+    const status = await response.json();
+    if (status.exists) return;
+    markShareConsumed();
+  } catch {
+    // Status polling is best-effort; the local expiry countdown remains authoritative.
+  }
+}
+
+function markShareConsumed() {
+  clearInterval(countdownTimer);
+  countdownTimer = null;
+  stopShareStatusPolling();
+  currentShareUrl = "";
+  currentShareLocator = "";
+  qrImage.removeAttribute("src");
+  qrImage.classList.add("hidden");
+  countdownHoldUntil = 0;
+  countdown.textContent = "文本已被接收并销毁";
 }
 
 async function handleShareCodeCopy() {

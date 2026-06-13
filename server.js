@@ -76,6 +76,10 @@ const server = http.createServer(async (req, res) => {
       return await handleFetchClip(req, res);
     }
 
+    if (req.method === "POST" && url.pathname === "/api/clips/status") {
+      return await handleClipStatus(req, res);
+    }
+
     if (req.method === "POST" && url.pathname === "/api/clips/read") {
       return await handleConsumeClip(req, res);
     }
@@ -273,6 +277,19 @@ async function handleFetchClip(req, res) {
     iv: entry.iv,
     salt: entry.salt,
     expiresAt: entry.expiresAt,
+  });
+}
+
+async function handleClipStatus(req, res) {
+  pruneExpired();
+  const body = await readJson(req);
+  const locator = normalizeLocator(body.locator);
+  if (!locator) return sendJson(res, 400, { error: "请输入正确的前三位定位码" });
+
+  const entry = store.get(locator);
+  return sendJson(res, 200, {
+    exists: Boolean(entry),
+    expiresAt: entry?.expiresAt || null,
   });
 }
 
