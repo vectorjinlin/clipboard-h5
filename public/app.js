@@ -1,4 +1,4 @@
-const VERSION = "0.3.9";
+const VERSION = "0.3.10";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
