@@ -309,7 +309,15 @@ function maskText(text) {
 }
 
 function updateLinkButton() {
-  openLinkButton.classList.toggle("hidden", decryptedKind !== "url");
+  const isUrl = decryptedKind === "url";
+  openLinkButton.classList.toggle("hidden", !isUrl);
+  copyButton.classList.toggle("border-[#d4cab9]", isUrl);
+  copyButton.classList.toggle("bg-transparent", isUrl);
+  copyButton.classList.toggle("text-[#181714]", isUrl);
+  copyButton.classList.toggle("shadow-[0_22px_60px_rgba(49,37,20,0.10)]", !isUrl);
+  copyButton.classList.toggle("bg-[#181714]", !isUrl);
+  copyButton.classList.toggle("text-[#f5f1e8]", !isUrl);
+  copyButton.classList.toggle("border-transparent", !isUrl);
 }
 
 function updatePasswordButton() {
