@@ -8,13 +8,19 @@
   "theme_color": "#f4f1e8",
   "icons": [
     {
-      "src": "/icon.png?v=20260614-4",
+      "src": "/icon.svg?v=20260617-1",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png?v=20260617-1",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/apple-touch-icon-180x180.png?v=20260614-4",
+      "src": "/apple-touch-icon-180x180.png?v=20260617-1",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

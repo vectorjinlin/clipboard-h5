@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2F6CF1"/>
+      <stop offset="0.52" stop-color="#2496E6"/>
+      <stop offset="1" stop-color="#18C8C6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="512" cy="496" r="430" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EAF6FF" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#EAF6FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vig" cx="512" cy="512" r="660" gradientUnits="userSpaceOnUse">
+      <stop offset="0.58" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.28"/>
+    </radialGradient>
+    <linearGradient id="wing" x1="318" y1="331" x2="566" y2="681" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E7F0FF"/>
+    </linearGradient>
+    <linearGradient id="keel" x1="470" y1="331" x2="566" y2="681" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#CBDBF6"/>
+      <stop offset="1" stop-color="#A4BDE6"/>
+    </linearGradient>
+    <linearGradient id="tophl" x1="0" y1="0" x2="0" y2="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bothl" x1="0" y1="1024" x2="0" y2="876" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="canvas"><rect x="0" y="0" width="1024" height="1024" rx="0"/></clipPath>
+  </defs>
+  <g clip-path="url(#canvas)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <rect width="1024" height="1024" fill="url(#glow)"/>
+
+    <circle cx="338" cy="520" r="10" fill="#FFFFFF" opacity="0.75"/>
+    <circle cx="300" cy="566" r="8"  fill="#FFFFFF" opacity="0.60"/>
+    <circle cx="264" cy="616" r="6.5" fill="#FFFFFF" opacity="0.46"/>
+    <circle cx="230" cy="669" r="5"  fill="#FFFFFF" opacity="0.34"/>
+    <circle cx="199" cy="722" r="4"  fill="#FFFFFF" opacity="0.24"/>
+
+    <path d="M 706 331 L 470 573 L 566 681 Z" fill="url(#keel)"/>
+    <path d="M 706 331 L 318 477 L 470 573 Z" fill="url(#wing)"/>
+    <path d="M 706 331 L 470 573" stroke="#9DB4DD" stroke-width="3" opacity="0.55" stroke-linecap="round"/>
+    <path d="M 686 350 L 366 478" stroke="#ffffff" stroke-width="11" stroke-linecap="round" opacity="0.70"/>
+    <path d="M 706 331 L 318 477 L 470 573 L 566 681 Z" fill="none" stroke="#16306B" stroke-opacity="0.55" stroke-width="3" stroke-linejoin="round"/>
+
+    <rect width="1024" height="210" fill="url(#tophl)"/>
+    <rect y="876" width="1024" height="148" fill="url(#bothl)"/>
+    <rect width="1024" height="1024" fill="url(#vig)"/>
+  </g>
+</svg>
