@@ -19,6 +19,9 @@ const receiveState = document.getElementById("receive-state");
 const manualState = document.getElementById("manual-state");
 const decryptedCard = document.getElementById("decrypted-card");
 const decryptedTextEl = document.getElementById("decrypted-text");
+const openLinkButton = document.getElementById("open-link-button");
+const togglePasswordButton = document.getElementById("toggle-password-button");
+const togglePasswordSlash = document.getElementById("toggle-password-slash");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
 const homeHelp = document.getElementById("home-help");
 const homeHelpButton = document.getElementById("home-help-button");
@@ -37,6 +40,8 @@ let countdownTimer = null;
 let manualCountdownTimer = null;
 let manualCheckId = 0;
 let decryptedText = "";
+let decryptedKind = "text";
+let passwordRevealed = false;
 let manualPayload = null;
 let currentShareUrl = "";
 let currentShareLocator = "";
@@ -63,6 +68,8 @@ function bootstrap() {
   sendButton.addEventListener("click", handleSend);
   decryptButton.addEventListener("click", handleManualDecrypt);
   copyButton.addEventListener("click", handleCopy);
+  openLinkButton.addEventListener("click", handleOpenLink);
+  togglePasswordButton.addEventListener("click", handleTogglePassword);
   manualEntryButton.addEventListener("click", () => showManualView());
   receiveManualButton.addEventListener("click", () => showManualView());
   receiveToSendButton.addEventListener("click", () => showSendView());
@@ -132,7 +139,11 @@ function resetSendView() {
 
 function resetReceiveView() {
   decryptedText = "";
+  decryptedKind = "text";
+  passwordRevealed = false;
   renderDecryptedText("");
+  updateLinkButton();
+  updatePasswordButton();
   updateCopyButtonState(false);
   setReceiveMessage("正在本地解密");
 }
@@ -251,8 +262,12 @@ async function decryptCode(code) {
 
 async function showDecryptedResult(result) {
   decryptedText = result.text;
+  decryptedKind = detectTextKind(decryptedText);
+  passwordRevealed = false;
   showReceiveView();
-  await renderDecryptedText(decryptedText);
+  await renderDecryptedText(getDisplayText());
+  updateLinkButton();
+  updatePasswordButton();
   updateCopyButtonState(true);
   setReceiveMessage("点击复制到本地剪贴板");
   await consumeClip(result.locator);
@@ -270,6 +285,67 @@ async function handleCopy() {
 
   const copied = await copyText(decryptedText);
   setReceiveMessage(copied ? "已复制到本地剪贴板" : "复制失败，请长按页面手动复制", !copied);
+}
+
+function handleOpenLink() {
+  if (decryptedKind !== "url" || !decryptedText) return;
+  window.open(getUrlHref(decryptedText), "_blank", "noopener");
+}
+
+function handleTogglePassword() {
+  if (decryptedKind !== "password") return;
+  passwordRevealed = !passwordRevealed;
+  decryptedTextEl.textContent = getDisplayText();
+  togglePasswordSlash.classList.toggle("hidden", !passwordRevealed);
+}
+
+function getDisplayText() {
+  if (decryptedKind === "password" && !passwordRevealed) return maskText(decryptedText);
+  return decryptedText;
+}
+
+function maskText(text) {
+  return "•".repeat(Math.min(text.length, 32)) || "••••";
+}
+
+function updateLinkButton() {
+  openLinkButton.classList.toggle("hidden", decryptedKind !== "url");
+}
+
+function updatePasswordButton() {
+  togglePasswordButton.classList.toggle("hidden", decryptedKind !== "password");
+  togglePasswordSlash.classList.toggle("hidden", !passwordRevealed);
+}
+
+function detectTextKind(text) {
+  if (isUrlText(text)) return "url";
+  if (isPasswordText(text)) return "password";
+  return "text";
+}
+
+function isUrlText(text) {
+  if (!text || /\s/.test(text)) return false;
+  const candidate = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+  if (!/^https?:\/\//i.test(text) && !/^www\./i.test(text)) return false;
+  try {
+    const url = new URL(candidate);
+    return Boolean(url.hostname && url.hostname.includes("."));
+  } catch {
+    return false;
+  }
+}
+
+function getUrlHref(text) {
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`;
+}
+
+function isPasswordText(text) {
+  if (!text || /\s/.test(text)) return false;
+  if (text.length < 4 || text.length > 64) return false;
+  const hasLetter = /[A-Za-z]/.test(text);
+  const hasDigit = /\d/.test(text);
+  const hasSymbol = /[^A-Za-z0-9]/.test(text);
+  return [hasLetter, hasDigit, hasSymbol].filter(Boolean).length >= 2;
 }
 
 function startCountdown(expiresAt) {
