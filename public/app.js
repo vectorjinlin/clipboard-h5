@@ -264,10 +264,10 @@ async function showDecryptedResult(result) {
   decryptedText = result.text;
   decryptedKind = detectTextKind(decryptedText);
   passwordRevealed = false;
-  showReceiveView();
-  await renderDecryptedText(getDisplayText());
   updateLinkButton();
   updatePasswordButton();
+  showReceiveView();
+  await renderDecryptedText(getDisplayText());
   updateCopyButtonState(true);
   setReceiveMessage("点击复制到本地剪贴板");
   await consumeClip(result.locator);
