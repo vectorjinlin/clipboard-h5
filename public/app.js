@@ -1,4 +1,4 @@
-const VERSION = "1.1.2";
+const VERSION = "1.1.3";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
@@ -284,10 +284,10 @@ async function showDecryptedResult(result) {
   updateLinkButton();
   updatePasswordButton();
   updateSubscriptionHelp();
+  setReceiveMessage("点击复制到本地剪贴板");
   showReceiveView();
   await renderDecryptedText(getDisplayText());
   updateCopyButtonState(true);
-  setReceiveMessage("点击复制到本地剪贴板");
   await consumeClip(result.locator);
   clearCodeCells();
   clearManualCountdown();
@@ -791,6 +791,7 @@ function setCodeCellsValid(isValid) {
 }
 
 function setReceiveMessage(message, isError = false) {
+  receiveState.classList.remove("copy-feedback");
   receiveState.textContent = message;
   receiveState.classList.toggle("text-[#b5472f]", isError);
   receiveState.classList.toggle("text-[#847b6c]", !isError);
