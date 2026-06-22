@@ -1,4 +1,4 @@
-const VERSION = "1.1.1";
+const VERSION = "1.1.2";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
@@ -384,7 +384,7 @@ function getSubscriptionHelp() {
       title: "iPhone / iPad 订阅链接【使用说明】：",
       steps: [
         "1. 点击“复制”，打开Shadowrocket",
-        "2. 如有系统弹窗，点“允许粘贴”",
+        "2. 系统弹窗（如果有），点“允许粘贴”",
         "3. 点右上角“加号（+）”",
         {
           text: "4. 添加（或确认）以下2项设置：",
