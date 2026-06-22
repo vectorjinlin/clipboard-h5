@@ -308,14 +308,14 @@ function handleOpenLink() {
 }
 
 function handleTogglePassword() {
-  if (!decryptedText) return;
+  if (decryptedKind !== "password") return;
   passwordRevealed = !passwordRevealed;
   decryptedTextEl.textContent = getDisplayText();
   togglePasswordSlash.classList.toggle("hidden", !passwordRevealed);
 }
 
 function getDisplayText() {
-  if (decryptedText && !passwordRevealed) return maskText(decryptedText);
+  if (decryptedKind === "password" && !passwordRevealed) return maskText(decryptedText);
   return decryptedText;
 }
 
@@ -338,7 +338,7 @@ function updateLinkButton() {
 }
 
 function updatePasswordButton() {
-  togglePasswordButton.classList.toggle("hidden", !decryptedText);
+  togglePasswordButton.classList.toggle("hidden", decryptedKind !== "password");
   togglePasswordSlash.classList.toggle("hidden", !passwordRevealed);
 }
 
@@ -407,6 +407,17 @@ function getSubscriptionHelp() {
       ],
     };
   }
+  if (device === "mac") {
+    return {
+      title: "Mac 订阅链接【使用说明】：",
+      steps: [
+        "1. 点击“复制”",
+        "2. 打开 Jamjams，点击“Add Servers”",
+        "3. 点击“Subscription URL”",
+        "4. 粘贴 URL，点击“Done”",
+      ],
+    };
+  }
   return null;
 }
 
@@ -449,9 +460,11 @@ function isBulusiSubscriptionUrl(text) {
 function getDeviceFamily() {
   const agent = navigator.userAgent || "";
   const platform = navigator.platform || "";
-  if (/iPhone/i.test(agent)) return "iphone";
+  const isIpad = /iPad/i.test(agent) || (platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (/iPhone/i.test(agent) || isIpad) return "iphone";
   if (/Android/i.test(agent)) return "android";
   if (/Win/i.test(platform) || /Windows/i.test(agent)) return "windows";
+  if (/Mac/i.test(platform) || /Mac OS X/i.test(agent)) return "mac";
   return "other";
 }
 
