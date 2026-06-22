@@ -37,6 +37,8 @@ const statsList = document.getElementById("stats-list");
 const statsPrev = document.getElementById("stats-prev");
 const statsNext = document.getElementById("stats-next");
 const statsPage = document.getElementById("stats-page");
+const receiveNoticeModal = document.getElementById("receive-notice-modal");
+const receiveNoticeClose = document.getElementById("receive-notice-close");
 const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
@@ -87,6 +89,7 @@ function bootstrap() {
   });
   appFooter.addEventListener("click", handleFooterTap);
   statsClose.addEventListener("click", closeStatsModal);
+  receiveNoticeClose.addEventListener("click", closeReceiveNoticeModal);
   statsModal.addEventListener("click", (event) => {
     if (event.target === statsModal) closeStatsModal();
   });
@@ -110,6 +113,7 @@ function bootstrap() {
 
 function showSendView({ reset = true } = {}) {
   if (reset) resetSendView();
+  closeReceiveNoticeModal();
   showOnly(sendView);
   setUrlCode("");
 }
@@ -121,6 +125,7 @@ function showReceiveView({ reset = false } = {}) {
 
 function showManualView({ reset = true } = {}) {
   if (reset) resetManualView();
+  closeReceiveNoticeModal();
   showOnly(manualView);
   setUrlCode("");
 }
@@ -275,6 +280,7 @@ async function showDecryptedResult(result) {
   updatePasswordButton();
   updateSubscriptionHelp();
   showReceiveView();
+  openReceiveNoticeModal();
   await renderDecryptedText(getDisplayText());
   updateCopyButtonState(true);
   setReceiveMessage("点击复制到本地剪贴板");
@@ -363,7 +369,7 @@ function getSubscriptionHelp() {
   const device = getDeviceFamily();
   if (device === "iphone") {
     return {
-      title: "iPhone 订阅链接使用方法",
+      title: "iPhone / iPad 订阅链接使用方法",
       steps: [
         "1. 点击“复制”",
         "2. 打开 Shadowrocket，点右上角“加号（+）”",
@@ -371,7 +377,7 @@ function getSubscriptionHelp() {
           text: "3. 点击“保存”，需确认页面有以下内容：",
           items: [
             "类型是 Subscribe",
-            "URL 是刚才复制的内容（https://bulusi.947sh.xyz...）",
+            "URL 是：“https://bulusi.947sh.xyz...”",
           ],
         },
       ],
@@ -390,10 +396,10 @@ function getSubscriptionHelp() {
   }
   if (device === "windows") {
     return {
-      title: "Windows 订阅链接使用方法",
+      title: "Windows 订阅链接【使用说明】：",
       steps: [
         "1. 点击“复制”",
-        "2. 打开 v2RayN，按 ctrl+v 粘贴，会新增",
+        "2. 打开 v2RayN，按ctrl+v粘贴",
         "3. 软件界面出现 import_sub 分组",
         "4. 点击“订阅分组”",
         "5. 点击“更新全部订阅（不通过代理）”",
@@ -853,6 +859,15 @@ async function recordVisit() {
 
 function closeStatsModal() {
   statsModal.classList.remove("is-open");
+}
+
+function openReceiveNoticeModal() {
+  receiveNoticeModal.classList.add("is-open");
+  receiveNoticeClose.focus({ preventScroll: true });
+}
+
+function closeReceiveNoticeModal() {
+  receiveNoticeModal.classList.remove("is-open");
 }
 
 function renderUserRows(users, offset = 0) {
