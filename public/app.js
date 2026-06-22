@@ -1,4 +1,4 @@
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
@@ -47,6 +47,7 @@ let manualCheckId = 0;
 let decryptedText = "";
 let decryptedKind = "text";
 let passwordRevealed = false;
+let receiveNoticeShown = false;
 let manualPayload = null;
 let currentShareUrl = "";
 let currentShareLocator = "";
@@ -149,6 +150,7 @@ function resetReceiveView() {
   decryptedText = "";
   decryptedKind = "text";
   passwordRevealed = false;
+  receiveNoticeShown = false;
   renderDecryptedText("");
   updateLinkButton();
   updatePasswordButton();
@@ -253,6 +255,7 @@ async function handleManualDecrypt() {
 async function decryptCode(code) {
   decryptedText = "";
   decryptedKind = "text";
+  receiveNoticeShown = false;
   renderDecryptedText("");
   updateLinkButton();
   updatePasswordButton();
@@ -277,6 +280,7 @@ async function showDecryptedResult(result) {
   decryptedText = result.text;
   decryptedKind = detectTextKind(decryptedText);
   passwordRevealed = false;
+  receiveNoticeShown = false;
   updateLinkButton();
   updatePasswordButton();
   updateSubscriptionHelp();
@@ -299,7 +303,14 @@ async function handleCopy() {
 
   const copied = await copyText(decryptedText);
   setReceiveMessage(copied ? "已复制到本地剪贴板" : "复制失败，请长按页面手动复制", !copied);
-  if (copied) openReceiveNoticeModal();
+  if (copied) {
+    if (!receiveNoticeShown) {
+      receiveNoticeShown = true;
+      openReceiveNoticeModal();
+    } else {
+      pulseReceiveMessage();
+    }
+  }
 }
 
 function handleOpenLink() {
@@ -782,6 +793,12 @@ function setReceiveMessage(message, isError = false) {
   receiveState.textContent = message;
   receiveState.classList.toggle("text-[#b5472f]", isError);
   receiveState.classList.toggle("text-[#847b6c]", !isError);
+}
+
+function pulseReceiveMessage() {
+  receiveState.classList.remove("copy-feedback");
+  void receiveState.offsetWidth;
+  receiveState.classList.add("copy-feedback");
 }
 
 function setManualMessage(message, isError = false) {
