@@ -372,13 +372,13 @@ function getSubscriptionHelp() {
     return {
       title: "iPhone / iPad 订阅链接【使用说明】：",
       steps: [
-        "1. 点击“复制”",
-        "2. 打开 Shadowrocket，点右上角“加号（+）”",
+        "1. 点击“复制”，打开Shadowrocket",
+        "2. 点右上角“加号（+）”",
         {
           text: "3. 点击“保存”，需确认页面有以下内容：",
           items: [
-            "类型是 Subscribe",
-            "URL 是：“https://bulusi.947sh.xyz...”",
+            "类型是Subscribe",
+            "URL是：“https://bulusi.947sh.xyz...”",
           ],
         },
       ],
@@ -388,8 +388,8 @@ function getSubscriptionHelp() {
     return {
       title: "安卓订阅链接【使用说明】：",
       steps: [
-        "1. 点击“复制”",
-        "2. 打开 v2rayNG，点右上角“加号（+）”",
+        "1. 点击“复制”，打开v2rayNG",
+        "2. 点右上角“加号（+）”",
         "3. 点从“剪贴板导入”",
         "4. 点右上角“…”，点“更新当前组订阅”",
       ],
@@ -399,9 +399,9 @@ function getSubscriptionHelp() {
     return {
       title: "Windows 订阅链接【使用说明】：",
       steps: [
-        "1. 点击“复制”",
-        "2. 打开 v2RayN，按ctrl+v粘贴",
-        "3. 软件界面出现 import_sub 分组",
+        "1. 点击“复制”，打开v2RayN",
+        "2. 按ctrl+v粘贴",
+        "3. 新增import_sub分组",
         "4. 点击“订阅分组”",
         "5. 点击“更新全部订阅（不通过代理）”",
       ],
@@ -411,10 +411,10 @@ function getSubscriptionHelp() {
     return {
       title: "Mac 订阅链接【使用说明】：",
       steps: [
-        "1. 点击“复制”",
-        "2. 打开 Jamjams，点击“Add Servers”",
+        "1. 点击“复制”，打开jamjams",
+        "2. 点击“Add Servers”",
         "3. 点击“Subscription URL”",
-        "4. 粘贴 URL，点击“Done”",
+        "4. 粘贴URL，点击“Done”",
       ],
     };
   }
