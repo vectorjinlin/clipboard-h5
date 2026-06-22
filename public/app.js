@@ -255,6 +255,7 @@ async function decryptCode(code) {
   decryptedKind = "text";
   renderDecryptedText("");
   updateLinkButton();
+  updatePasswordButton();
   updateSubscriptionHelp();
   updateCopyButtonState(false);
   setReceiveMessage("正在本地解密");
@@ -307,14 +308,14 @@ function handleOpenLink() {
 }
 
 function handleTogglePassword() {
-  if (decryptedKind !== "password") return;
+  if (!decryptedText) return;
   passwordRevealed = !passwordRevealed;
   decryptedTextEl.textContent = getDisplayText();
   togglePasswordSlash.classList.toggle("hidden", !passwordRevealed);
 }
 
 function getDisplayText() {
-  if (decryptedKind === "password" && !passwordRevealed) return maskText(decryptedText);
+  if (decryptedText && !passwordRevealed) return maskText(decryptedText);
   return decryptedText;
 }
 
@@ -337,7 +338,7 @@ function updateLinkButton() {
 }
 
 function updatePasswordButton() {
-  togglePasswordButton.classList.toggle("hidden", decryptedKind !== "password");
+  togglePasswordButton.classList.toggle("hidden", !decryptedText);
   togglePasswordSlash.classList.toggle("hidden", !passwordRevealed);
 }
 
@@ -369,7 +370,7 @@ function getSubscriptionHelp() {
   const device = getDeviceFamily();
   if (device === "iphone") {
     return {
-      title: "iPhone / iPad 订阅链接使用方法",
+      title: "iPhone / iPad 订阅链接【使用说明】：",
       steps: [
         "1. 点击“复制”",
         "2. 打开 Shadowrocket，点右上角“加号（+）”",
@@ -385,7 +386,7 @@ function getSubscriptionHelp() {
   }
   if (device === "android") {
     return {
-      title: "安卓订阅链接使用方法",
+      title: "安卓订阅链接【使用说明】：",
       steps: [
         "1. 点击“复制”",
         "2. 打开 v2rayNG，点右上角“加号（+）”",
