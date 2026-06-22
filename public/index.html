@@ -170,6 +170,7 @@
       <div class="rounded-[34px] border border-white/70 bg-[#f7f3ea]/95 p-5 text-center shadow-[0_22px_60px_rgba(49,37,20,0.10)] sm:p-6">
         <div class="flex flex-col gap-5">
           <div id="decrypted-card" class="decrypted-card hidden relative rounded-[22px] border border-[#d4cab9]/70 bg-white/58 px-4 py-4">
+            <p class="mb-3 rounded-2xl bg-[#181714]/6 px-3 py-2 text-center text-xs font-bold leading-5 text-[#847b6c]">文本已在服务器上销毁，本页面关闭后无法打开</p>
             <div id="decrypted-text" class="max-h-[34vh] overflow-auto whitespace-pre-wrap break-words text-center text-lg font-semibold leading-7 text-[#181714] sm:text-xl sm:leading-8"></div>
             <button id="toggle-password-button" class="hidden absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-[#847b6c] transition hover:bg-[#181714]/8 active:scale-95" type="button" aria-label="显示/隐藏密码" title="显示/隐藏密码">
               <svg id="toggle-password-icon" class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -191,6 +192,11 @@
           </div>
         </div>
         <p id="receive-state" class="mt-3 min-h-6 text-sm font-medium text-[#847b6c]">正在本地解密</p>
+      </div>
+
+      <div id="subscription-help" class="hidden mt-5 rounded-[24px] border border-[#d4cab9]/70 bg-[#f7f3ea]/88 p-5 text-left shadow-[0_18px_42px_rgba(49,37,20,0.08)]">
+        <p id="subscription-help-title" class="text-sm font-extrabold text-[#181714]"></p>
+        <div id="subscription-help-body" class="mt-3 space-y-2 text-sm font-semibold leading-6 text-[#5f574a]"></div>
       </div>
 
       <div class="mt-8 flex justify-center gap-5 text-sm font-semibold text-[#847b6c]">

@@ -20,6 +20,9 @@ const manualState = document.getElementById("manual-state");
 const decryptedCard = document.getElementById("decrypted-card");
 const decryptedTextEl = document.getElementById("decrypted-text");
 const openLinkButton = document.getElementById("open-link-button");
+const subscriptionHelp = document.getElementById("subscription-help");
+const subscriptionHelpTitle = document.getElementById("subscription-help-title");
+const subscriptionHelpBody = document.getElementById("subscription-help-body");
 const togglePasswordButton = document.getElementById("toggle-password-button");
 const togglePasswordSlash = document.getElementById("toggle-password-slash");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
@@ -144,6 +147,7 @@ function resetReceiveView() {
   renderDecryptedText("");
   updateLinkButton();
   updatePasswordButton();
+  updateSubscriptionHelp();
   updateCopyButtonState(false);
   setReceiveMessage("正在本地解密");
 }
@@ -243,7 +247,10 @@ async function handleManualDecrypt() {
 
 async function decryptCode(code) {
   decryptedText = "";
+  decryptedKind = "text";
   renderDecryptedText("");
+  updateLinkButton();
+  updateSubscriptionHelp();
   updateCopyButtonState(false);
   setReceiveMessage("正在本地解密");
 
@@ -266,6 +273,7 @@ async function showDecryptedResult(result) {
   passwordRevealed = false;
   updateLinkButton();
   updatePasswordButton();
+  updateSubscriptionHelp();
   showReceiveView();
   await renderDecryptedText(getDisplayText());
   updateCopyButtonState(true);
@@ -310,19 +318,89 @@ function maskText(text) {
 
 function updateLinkButton() {
   const isUrl = decryptedKind === "url";
-  openLinkButton.classList.toggle("hidden", !isUrl);
-  copyButton.classList.toggle("border-[#d4cab9]", isUrl);
-  copyButton.classList.toggle("bg-transparent", isUrl);
-  copyButton.classList.toggle("text-[#181714]", isUrl);
-  copyButton.classList.toggle("shadow-[0_22px_60px_rgba(49,37,20,0.10)]", !isUrl);
-  copyButton.classList.toggle("bg-[#181714]", !isUrl);
-  copyButton.classList.toggle("text-[#f5f1e8]", !isUrl);
-  copyButton.classList.toggle("border-transparent", !isUrl);
+  const isSubscriptionUrl = isBulusiSubscriptionUrl(decryptedText);
+  const showOpenLink = isUrl && !isSubscriptionUrl;
+  openLinkButton.classList.toggle("hidden", !showOpenLink);
+  copyButton.classList.toggle("border-[#d4cab9]", showOpenLink);
+  copyButton.classList.toggle("bg-transparent", showOpenLink);
+  copyButton.classList.toggle("text-[#181714]", showOpenLink);
+  copyButton.classList.toggle("shadow-[0_22px_60px_rgba(49,37,20,0.10)]", !showOpenLink);
+  copyButton.classList.toggle("bg-[#181714]", !showOpenLink);
+  copyButton.classList.toggle("text-[#f5f1e8]", !showOpenLink);
+  copyButton.classList.toggle("border-transparent", !showOpenLink);
 }
 
 function updatePasswordButton() {
   togglePasswordButton.classList.toggle("hidden", decryptedKind !== "password");
   togglePasswordSlash.classList.toggle("hidden", !passwordRevealed);
+}
+
+function updateSubscriptionHelp() {
+  const help = getSubscriptionHelp();
+  subscriptionHelp.classList.toggle("hidden", !help);
+  if (!help) {
+    subscriptionHelpTitle.textContent = "";
+    subscriptionHelpBody.innerHTML = "";
+    return;
+  }
+
+  subscriptionHelpTitle.textContent = help.title;
+  subscriptionHelpBody.innerHTML = help.steps.map((step) => {
+    if (typeof step === "string") return `<p>${escapeHtml(step)}</p>`;
+    return `
+      <div>
+        <p>${escapeHtml(step.text)}</p>
+        <ul class="mt-1 list-disc space-y-1 pl-5">
+          ${step.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+  }).join("");
+}
+
+function getSubscriptionHelp() {
+  if (!isBulusiSubscriptionUrl(decryptedText)) return null;
+  const device = getDeviceFamily();
+  if (device === "iphone") {
+    return {
+      title: "iPhone 订阅链接使用方法",
+      steps: [
+        "1. 点击“复制”",
+        "2. 打开 Shadowrocket，点右上角“加号（+）”",
+        {
+          text: "3. 点击“保存”，需确认页面有以下内容：",
+          items: [
+            "类型是 Subscribe",
+            "URL 是刚才复制的内容（https://bulusi.947sh.xyz...）",
+          ],
+        },
+      ],
+    };
+  }
+  if (device === "android") {
+    return {
+      title: "安卓订阅链接使用方法",
+      steps: [
+        "1. 点击“复制”",
+        "2. 打开 v2rayNG，点右上角“加号（+）”",
+        "3. 点从“剪贴板导入”",
+        "4. 点右上角“…”，点“更新当前组订阅”",
+      ],
+    };
+  }
+  if (device === "windows") {
+    return {
+      title: "Windows 订阅链接使用方法",
+      steps: [
+        "1. 点击“复制”",
+        "2. 打开 v2RayN，按 ctrl+v 粘贴，会新增",
+        "3. 软件界面出现 import_sub 分组",
+        "4. 点击“订阅分组”",
+        "5. 点击“更新全部订阅（不通过代理）”",
+      ],
+    };
+  }
+  return null;
 }
 
 function detectTextKind(text) {
@@ -345,6 +423,29 @@ function isUrlText(text) {
 
 function getUrlHref(text) {
   return /^https?:\/\//i.test(text) ? text : `https://${text}`;
+}
+
+function isBulusiSubscriptionUrl(text) {
+  if (!text || /\s/.test(text)) return false;
+  try {
+    const url = new URL(text);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "bulusi.947sh.xyz" &&
+      (url.pathname === "/sub" || url.pathname.startsWith("/sub/"))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function getDeviceFamily() {
+  const agent = navigator.userAgent || "";
+  const platform = navigator.platform || "";
+  if (/iPhone/i.test(agent)) return "iphone";
+  if (/Android/i.test(agent)) return "android";
+  if (/Win/i.test(platform) || /Windows/i.test(agent)) return "windows";
+  return "other";
 }
 
 function isPasswordText(text) {
