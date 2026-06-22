@@ -37,6 +37,8 @@ const statsList = document.getElementById("stats-list");
 const statsPrev = document.getElementById("stats-prev");
 const statsNext = document.getElementById("stats-next");
 const statsPage = document.getElementById("stats-page");
+const receiveNoticeModal = document.getElementById("receive-notice-modal");
+const receiveNoticeClose = document.getElementById("receive-notice-close");
 const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
@@ -87,6 +89,7 @@ function bootstrap() {
   });
   appFooter.addEventListener("click", handleFooterTap);
   statsClose.addEventListener("click", closeStatsModal);
+  receiveNoticeClose.addEventListener("click", closeReceiveNoticeModal);
   statsModal.addEventListener("click", (event) => {
     if (event.target === statsModal) closeStatsModal();
   });
@@ -110,6 +113,7 @@ function bootstrap() {
 
 function showSendView({ reset = true } = {}) {
   if (reset) resetSendView();
+  closeReceiveNoticeModal();
   showOnly(sendView);
   setUrlCode("");
 }
@@ -121,6 +125,7 @@ function showReceiveView({ reset = false } = {}) {
 
 function showManualView({ reset = true } = {}) {
   if (reset) resetManualView();
+  closeReceiveNoticeModal();
   showOnly(manualView);
   setUrlCode("");
 }
@@ -294,6 +299,7 @@ async function handleCopy() {
 
   const copied = await copyText(decryptedText);
   setReceiveMessage(copied ? "已复制到本地剪贴板" : "复制失败，请长按页面手动复制", !copied);
+  if (copied) openReceiveNoticeModal();
 }
 
 function handleOpenLink() {
@@ -369,12 +375,13 @@ function getSubscriptionHelp() {
         "1. 点击“复制”，打开Shadowrocket",
         "2. 点右上角“加号（+）”",
         {
-          text: "3. 点击“保存”，需确认页面有以下内容：",
+          text: "3. 需确认页面有以下内容：",
           items: [
             "类型是Subscribe",
             "URL是：“https://bulusi.947sh.xyz...”",
           ],
         },
+        "4. 点击“保存”",
       ],
     };
   }
@@ -867,6 +874,15 @@ async function recordVisit() {
 
 function closeStatsModal() {
   statsModal.classList.remove("is-open");
+}
+
+function openReceiveNoticeModal() {
+  receiveNoticeModal.classList.add("is-open");
+  receiveNoticeClose.focus({ preventScroll: true });
+}
+
+function closeReceiveNoticeModal() {
+  receiveNoticeModal.classList.remove("is-open");
 }
 
 function renderUserRows(users, offset = 0) {
