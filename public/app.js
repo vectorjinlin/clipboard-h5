@@ -281,7 +281,6 @@ async function showDecryptedResult(result) {
   updatePasswordButton();
   updateSubscriptionHelp();
   showReceiveView();
-  openReceiveNoticeModal();
   await renderDecryptedText(getDisplayText());
   updateCopyButtonState(true);
   setReceiveMessage("点击复制到本地剪贴板");
@@ -300,6 +299,7 @@ async function handleCopy() {
 
   const copied = await copyText(decryptedText);
   setReceiveMessage(copied ? "已复制到本地剪贴板" : "复制失败，请长按页面手动复制", !copied);
+  if (copied) openReceiveNoticeModal();
 }
 
 function handleOpenLink() {
