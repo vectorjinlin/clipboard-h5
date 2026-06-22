@@ -1,4 +1,4 @@
-const VERSION = "1.1.3";
+const VERSION = "1.1.4";
 const sendView = document.getElementById("send-view");
 const receiveView = document.getElementById("receive-view");
 const manualView = document.getElementById("manual-view");
@@ -37,8 +37,6 @@ const statsList = document.getElementById("stats-list");
 const statsPrev = document.getElementById("stats-prev");
 const statsNext = document.getElementById("stats-next");
 const statsPage = document.getElementById("stats-page");
-const receiveNoticeModal = document.getElementById("receive-notice-modal");
-const receiveNoticeClose = document.getElementById("receive-notice-close");
 const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
@@ -47,7 +45,6 @@ let manualCheckId = 0;
 let decryptedText = "";
 let decryptedKind = "text";
 let passwordRevealed = false;
-let receiveNoticeShown = false;
 let manualPayload = null;
 let currentShareUrl = "";
 let currentShareLocator = "";
@@ -90,7 +87,6 @@ function bootstrap() {
   });
   appFooter.addEventListener("click", handleFooterTap);
   statsClose.addEventListener("click", closeStatsModal);
-  receiveNoticeClose.addEventListener("click", closeReceiveNoticeModal);
   statsModal.addEventListener("click", (event) => {
     if (event.target === statsModal) closeStatsModal();
   });
@@ -114,7 +110,6 @@ function bootstrap() {
 
 function showSendView({ reset = true } = {}) {
   if (reset) resetSendView();
-  closeReceiveNoticeModal();
   showOnly(sendView);
   setUrlCode("");
 }
@@ -126,7 +121,6 @@ function showReceiveView({ reset = false } = {}) {
 
 function showManualView({ reset = true } = {}) {
   if (reset) resetManualView();
-  closeReceiveNoticeModal();
   showOnly(manualView);
   setUrlCode("");
 }
@@ -150,7 +144,6 @@ function resetReceiveView() {
   decryptedText = "";
   decryptedKind = "text";
   passwordRevealed = false;
-  receiveNoticeShown = false;
   renderDecryptedText("");
   updateLinkButton();
   updatePasswordButton();
@@ -255,7 +248,6 @@ async function handleManualDecrypt() {
 async function decryptCode(code) {
   decryptedText = "";
   decryptedKind = "text";
-  receiveNoticeShown = false;
   renderDecryptedText("");
   updateLinkButton();
   updatePasswordButton();
@@ -280,7 +272,6 @@ async function showDecryptedResult(result) {
   decryptedText = result.text;
   decryptedKind = detectTextKind(decryptedText);
   passwordRevealed = false;
-  receiveNoticeShown = false;
   updateLinkButton();
   updatePasswordButton();
   updateSubscriptionHelp();
@@ -303,14 +294,7 @@ async function handleCopy() {
 
   const copied = await copyText(decryptedText);
   setReceiveMessage(copied ? "已复制到本地剪贴板" : "复制失败，请长按页面手动复制", !copied);
-  if (copied) {
-    if (!receiveNoticeShown) {
-      receiveNoticeShown = true;
-      openReceiveNoticeModal();
-    } else {
-      pulseReceiveMessage();
-    }
-  }
+  if (copied) pulseReceiveMessage();
 }
 
 function handleOpenLink() {
@@ -893,15 +877,6 @@ async function recordVisit() {
 
 function closeStatsModal() {
   statsModal.classList.remove("is-open");
-}
-
-function openReceiveNoticeModal() {
-  receiveNoticeModal.classList.add("is-open");
-  receiveNoticeClose.focus({ preventScroll: true });
-}
-
-function closeReceiveNoticeModal() {
-  receiveNoticeModal.classList.remove("is-open");
 }
 
 function renderUserRows(users, offset = 0) {
