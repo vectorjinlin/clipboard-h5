@@ -11,8 +11,13 @@ const port = Number(env.PORT || process.env.PORT || 8788);
 const appBaseUrl = env.APP_BASE_URL || process.env.APP_BASE_URL || `http://localhost:${port}`;
 const defaultTtlSeconds = normalizeTtlSeconds(env.TTL_SECONDS || process.env.TTL_SECONDS || 600);
 const maxTextBytes = Math.max(1024, Number(env.MAX_TEXT_BYTES || process.env.MAX_TEXT_BYTES || 65536));
-const visitWindowMs = 24 * 60 * 60 * 1000;
-const maxStoredVisits = 2000;
+const visitWindows = {
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "4w": 28 * 24 * 60 * 60 * 1000,
+};
+const maxVisitWindowMs = visitWindows["4w"];
+const maxStoredVisits = 10000;
 const defaultVisitPageSize = 10;
 
 const store = new Map();
@@ -155,27 +160,32 @@ function getVisitStats(url = new URL("http://localhost/")) {
   pruneOldVisits();
   const pageSize = clampInteger(url.searchParams.get("pageSize"), 1, 50, defaultVisitPageSize);
   const page = clampInteger(url.searchParams.get("page"), 1, 9999, 1);
-  const visits24h = getVisitsWithinWindow();
-  const users24h = getUsersFromVisits(visits24h);
-  const totalPages = Math.max(1, Math.ceil(users24h.length / pageSize));
+  const windowKey = normalizeVisitWindow(url.searchParams.get("window"));
+  const visits = getVisitsWithinWindow(windowKey);
+  const users = getUsersFromVisits(visits, windowKey);
+  const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const offset = (safePage - 1) * pageSize;
 
   return {
     totalUses: stats.totalUses,
     totalVisits: stats.totalVisits,
-    totalVisits24h: visits24h.length,
+    totalVisitsInWindow: visits.length,
+    totalVisits24h: getVisitsWithinWindow("24h").length,
     ipCount: stats.ipHashes.length,
-    ipCount24h: users24h.length,
+    ipCountInWindow: users.length,
+    ipCount24h: getUsersFromVisits(getVisitsWithinWindow("24h"), "24h").length,
+    window: windowKey,
     page: safePage,
     pageSize,
     totalPages,
-    users: users24h.slice(offset, offset + pageSize),
+    users: users.slice(offset, offset + pageSize),
   };
 }
 
-function getUsersFromVisits(visits) {
+function getUsersFromVisits(visits, windowKey) {
   const users = new Map();
+  const visitCountKey = `visitCount${windowKey === "24h" ? "24h" : windowKey === "7d" ? "7d" : "4w"}`;
 
   for (const visit of visits) {
     const key = hashIp(visit.ip);
@@ -185,16 +195,20 @@ function getUsersFromVisits(visits) {
       users.set(key, {
         ip: visit.ip,
         region: visit.region || "未知地区",
-        visitCount24h: 1,
+        visitCount: 1,
+        [visitCountKey]: 1,
         lastOperationTime: visit.time,
+        device: visit.device || parseDeviceInfo(visit.userAgent),
       });
       continue;
     }
 
-    current.visitCount24h += 1;
+    current.visitCount += 1;
+    current[visitCountKey] = current.visitCount;
     if (timeMs > Date.parse(current.lastOperationTime)) {
       current.lastOperationTime = visit.time;
       current.region = visit.region || current.region;
+      current.device = visit.device || parseDeviceInfo(visit.userAgent) || current.device;
     }
   }
 
@@ -209,10 +223,12 @@ function trackVisit(req) {
   const key = hashIp(ip);
   const now = new Date().toISOString();
   const region = getCachedRegion(ip);
+  const userAgent = String(req.headers["user-agent"] || "").slice(0, 500);
+  const device = parseDeviceInfo(userAgent);
 
   stats.totalVisits += 1;
   if (!stats.ipHashes.includes(key)) stats.ipHashes.push(key);
-  stats.recentVisits.unshift({ time: now, ip, region });
+  stats.recentVisits.unshift({ time: now, ip, region, userAgent, device });
   pruneOldVisits();
   saveStats();
 
@@ -268,15 +284,19 @@ function saveStats() {
 }
 
 function pruneOldVisits() {
-  const cutoff = Date.now() - visitWindowMs;
+  const cutoff = Date.now() - maxVisitWindowMs;
   stats.recentVisits = stats.recentVisits
     .filter((visit) => Date.parse(visit.time) >= cutoff)
     .slice(0, maxStoredVisits);
 }
 
-function getVisitsWithinWindow() {
-  const cutoff = Date.now() - visitWindowMs;
+function getVisitsWithinWindow(windowKey = "24h") {
+  const cutoff = Date.now() - visitWindows[normalizeVisitWindow(windowKey)];
   return stats.recentVisits.filter((visit) => Date.parse(visit.time) >= cutoff);
+}
+
+function normalizeVisitWindow(value) {
+  return Object.prototype.hasOwnProperty.call(visitWindows, value) ? value : "24h";
 }
 
 function clampInteger(value, min, max, fallback) {
@@ -370,7 +390,7 @@ async function resolveRegion(ip) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 2500);
   try {
-    const response = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,regionName,city`, {
+    const response = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,regionName,city&lang=zh-CN`, {
       signal: controller.signal,
     });
     if (!response.ok) return "未知地区";
@@ -389,6 +409,44 @@ function isPrivateIp(ip) {
   if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)) return true;
   if (ip.startsWith("fc") || ip.startsWith("fd") || ip.startsWith("fe80:")) return true;
   return false;
+}
+
+function parseDeviceInfo(userAgent = "") {
+  const ua = String(userAgent);
+  const os = getDeviceOs(ua);
+  const browser = getDeviceBrowser(ua);
+  const formFactor = /Mobile|iPhone|Android.*Mobile/i.test(ua)
+    ? "手机"
+    : /iPad|Tablet|Android/i.test(ua)
+      ? "平板"
+      : "电脑";
+
+  return {
+    label: [formFactor, os, browser].filter(Boolean).join(" · ") || "未知设备",
+    os,
+    browser,
+    formFactor,
+  };
+}
+
+function getDeviceOs(ua) {
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
+  if (/Android/i.test(ua)) return "Android";
+  if (/Windows NT/i.test(ua)) return "Windows";
+  if (/Mac OS X/i.test(ua)) return "macOS";
+  if (/Linux/i.test(ua)) return "Linux";
+  return "未知系统";
+}
+
+function getDeviceBrowser(ua) {
+  if (/Edg\//i.test(ua)) return "Edge";
+  if (/OPR\//i.test(ua)) return "Opera";
+  if (/CriOS\//i.test(ua)) return "Chrome";
+  if (/FxiOS\//i.test(ua)) return "Firefox";
+  if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) return "Chrome";
+  if (/Firefox\//i.test(ua)) return "Firefox";
+  if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) return "Safari";
+  return "未知浏览器";
 }
 
 function pruneExpired() {

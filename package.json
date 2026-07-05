@@ -4,7 +4,8 @@
   "private": true,
   "description": "Minimal encrypted clipboard H5 with selectable expiry",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=18"

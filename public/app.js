@@ -23,8 +23,6 @@ const openLinkButton = document.getElementById("open-link-button");
 const subscriptionHelp = document.getElementById("subscription-help");
 const subscriptionHelpTitle = document.getElementById("subscription-help-title");
 const subscriptionHelpBody = document.getElementById("subscription-help-body");
-const togglePasswordButton = document.getElementById("toggle-password-button");
-const togglePasswordSlash = document.getElementById("toggle-password-slash");
 const codeCells = Array.from(document.querySelectorAll(".code-cell"));
 const homeHelp = document.getElementById("home-help");
 const homeHelpButton = document.getElementById("home-help-button");
@@ -37,6 +35,7 @@ const statsList = document.getElementById("stats-list");
 const statsPrev = document.getElementById("stats-prev");
 const statsNext = document.getElementById("stats-next");
 const statsPage = document.getElementById("stats-page");
+const statsWindowButtons = Array.from(document.querySelectorAll(".stats-window-button"));
 const APP_ORIGIN = window.location.origin;
 
 let countdownTimer = null;
@@ -44,7 +43,7 @@ let manualCountdownTimer = null;
 let manualCheckId = 0;
 let decryptedText = "";
 let decryptedKind = "text";
-let passwordRevealed = false;
+let walletDetection = null;
 let manualPayload = null;
 let currentShareUrl = "";
 let currentShareLocator = "";
@@ -54,7 +53,13 @@ let footerTapCount = 0;
 let footerTapTimer = null;
 let statsCurrentPage = 1;
 let statsTotalPages = 1;
+let statsCurrentWindow = "24h";
 const statsPageSize = 10;
+const statsWindowLabels = {
+  "24h": "24小时",
+  "7d": "7天",
+  "4w": "4周",
+};
 
 bootstrap();
 
@@ -72,7 +77,6 @@ function bootstrap() {
   decryptButton.addEventListener("click", handleManualDecrypt);
   copyButton.addEventListener("click", handleCopy);
   openLinkButton.addEventListener("click", handleOpenLink);
-  togglePasswordButton.addEventListener("click", handleTogglePassword);
   manualEntryButton.addEventListener("click", () => showManualView());
   receiveManualButton.addEventListener("click", () => showManualView());
   receiveToSendButton.addEventListener("click", () => showSendView());
@@ -95,6 +99,13 @@ function bootstrap() {
   });
   statsNext.addEventListener("click", () => {
     if (statsCurrentPage < statsTotalPages) loadVisitStats(statsCurrentPage + 1);
+  });
+  statsWindowButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      statsCurrentWindow = button.dataset.window || "24h";
+      updateStatsWindowButtons();
+      loadVisitStats(1);
+    });
   });
   shareCode.addEventListener("click", handleShareCodeCopy);
   shareCode.addEventListener("keydown", (event) => {
@@ -143,10 +154,9 @@ function resetSendView() {
 function resetReceiveView() {
   decryptedText = "";
   decryptedKind = "text";
-  passwordRevealed = false;
+  walletDetection = null;
   renderDecryptedText("");
   updateLinkButton();
-  updatePasswordButton();
   updateSubscriptionHelp();
   updateCopyButtonState(false);
   setReceiveMessage("正在本地解密");
@@ -248,9 +258,9 @@ async function handleManualDecrypt() {
 async function decryptCode(code) {
   decryptedText = "";
   decryptedKind = "text";
+  walletDetection = null;
   renderDecryptedText("");
   updateLinkButton();
-  updatePasswordButton();
   updateSubscriptionHelp();
   updateCopyButtonState(false);
   setReceiveMessage("正在本地解密");
@@ -270,10 +280,9 @@ async function decryptCode(code) {
 
 async function showDecryptedResult(result) {
   decryptedText = result.text;
-  decryptedKind = detectTextKind(decryptedText);
-  passwordRevealed = false;
+  walletDetection = detectWalletAddressSafe(decryptedText);
+  decryptedKind = detectTextKind(decryptedText, walletDetection);
   updateLinkButton();
-  updatePasswordButton();
   updateSubscriptionHelp();
   setReceiveMessage("点击复制到本地剪贴板");
   showReceiveView();
@@ -302,20 +311,8 @@ function handleOpenLink() {
   window.open(getUrlHref(decryptedText), "_blank", "noopener");
 }
 
-function handleTogglePassword() {
-  if (decryptedKind !== "password") return;
-  passwordRevealed = !passwordRevealed;
-  decryptedTextEl.textContent = getDisplayText();
-  togglePasswordSlash.classList.toggle("hidden", !passwordRevealed);
-}
-
 function getDisplayText() {
-  if (decryptedKind === "password" && !passwordRevealed) return maskText(decryptedText);
   return decryptedText;
-}
-
-function maskText(text) {
-  return "•".repeat(Math.min(text.length, 32)) || "••••";
 }
 
 function updateLinkButton() {
@@ -332,13 +329,8 @@ function updateLinkButton() {
   copyButton.classList.toggle("border-transparent", !showOpenLink);
 }
 
-function updatePasswordButton() {
-  togglePasswordButton.classList.toggle("hidden", decryptedKind !== "password");
-  togglePasswordSlash.classList.toggle("hidden", !passwordRevealed);
-}
-
 function updateSubscriptionHelp() {
-  const help = getSubscriptionHelp();
+  const help = getTypeHelp();
   subscriptionHelp.classList.toggle("hidden", !help);
   if (!help) {
     subscriptionHelpTitle.textContent = "";
@@ -358,6 +350,44 @@ function updateSubscriptionHelp() {
       </div>
     `;
   }).join("");
+}
+
+function getTypeHelp() {
+  return getWalletHelp() || getSubscriptionHelp();
+}
+
+function getWalletHelp() {
+  if (decryptedKind !== "wallet" || !walletDetection?.isWalletAddress) return null;
+  return {
+    title: "加密钱包地址识别结果：",
+    steps: [
+      {
+        text: "识别信息：",
+        items: [
+          `地址类型：${walletDetection.primaryType || "未知"}`,
+          `候选网络：${walletDetection.chainCandidates.length ? walletDetection.chainCandidates.join("、") : "未知"}`,
+          `网络环境：${formatWalletNetwork(walletDetection.network)}`,
+          `地址标准：${walletDetection.addressType || "未标注"}`,
+        ],
+      },
+      {
+        text: "验证状态：",
+        items: [
+          `格式有效：${walletDetection.validFormat ? "是" : "否"}`,
+          `Checksum：${formatChecksumState(walletDetection.checksumValid)}`,
+          `置信度：${Math.round((walletDetection.confidence || 0) * 100)}%`,
+        ],
+      },
+      {
+        text: "注意事项：",
+        items: [
+          walletDetection.requiresNetworkContext ? "该地址需要结合网络上下文确认具体链" : "该地址格式本身已提供较明确的网络线索",
+          walletDetection.requiresOnChainCheck ? "格式验证不代表链上账户存在，也不代表一定可以正常收款" : "无需链上查询即可完成格式判断",
+          ...(walletDetection.warnings || []),
+        ],
+      },
+    ],
+  };
 }
 
 function getSubscriptionHelp() {
@@ -418,10 +448,27 @@ function getSubscriptionHelp() {
   return null;
 }
 
-function detectTextKind(text) {
+function detectTextKind(text, walletResult = null) {
   if (isUrlText(text)) return "url";
-  if (isPasswordText(text)) return "password";
+  if (walletResult?.isWalletAddress && walletResult.validFormat) return "wallet";
   return "text";
+}
+
+function detectWalletAddressSafe(text) {
+  if (!window.WalletDetection?.detectWalletAddress) return null;
+  return window.WalletDetection.detectWalletAddress(text);
+}
+
+function formatWalletNetwork(network) {
+  if (network === "mainnet") return "主网";
+  if (network === "testnet") return "测试网";
+  return "未知";
+}
+
+function formatChecksumState(value) {
+  if (value === true) return "有效";
+  if (value === false) return "无效";
+  return "不适用或未验证";
 }
 
 function isUrlText(text) {
@@ -463,15 +510,6 @@ function getDeviceFamily() {
   if (/Win/i.test(platform) || /Windows/i.test(agent)) return "windows";
   if (/Mac/i.test(platform) || /Mac OS X/i.test(agent)) return "mac";
   return "other";
-}
-
-function isPasswordText(text) {
-  if (!text || /\s/.test(text)) return false;
-  if (text.length < 4 || text.length > 64) return false;
-  const hasLetter = /[A-Za-z]/.test(text);
-  const hasDigit = /\d/.test(text);
-  const hasSymbol = /[^A-Za-z0-9]/.test(text);
-  return [hasLetter, hasDigit, hasSymbol].filter(Boolean).length >= 2;
 }
 
 function startCountdown(expiresAt) {
@@ -843,6 +881,7 @@ async function handleFooterTap() {
 async function openStatsModal() {
   statsModal.classList.add("is-open");
   statsCurrentPage = 1;
+  updateStatsWindowButtons();
   await loadVisitStats(1);
 }
 
@@ -852,12 +891,15 @@ async function loadVisitStats(page) {
   updateStatsPager(page, statsTotalPages);
 
   try {
-    const response = await fetch(`/api/visits?page=${page}&pageSize=${statsPageSize}`, { cache: "no-store" });
+    const response = await fetch(`/api/visits?page=${page}&pageSize=${statsPageSize}&window=${encodeURIComponent(statsCurrentWindow)}`, { cache: "no-store" });
     if (!response.ok) throw new Error("读取失败");
     const data = await response.json();
     statsCurrentPage = data.page || page;
     statsTotalPages = data.totalPages || 1;
-    statsSummary.textContent = `24小时访问 ${data.totalVisits24h ?? 0} 次 · IP ${data.ipCount24h ?? 0} 个 · 发送 ${data.totalUses ?? 0} 次`;
+    statsCurrentWindow = data.window || statsCurrentWindow;
+    updateStatsWindowButtons();
+    const windowLabel = statsWindowLabels[statsCurrentWindow] || "24小时";
+    statsSummary.textContent = `近${windowLabel}访问 ${data.totalVisitsInWindow ?? 0} 次 · 独立 IP ${data.ipCountInWindow ?? 0} 个 · 累计发送 ${data.totalUses ?? 0} 次`;
     renderUserRows(data.users || [], (statsCurrentPage - 1) * statsPageSize);
     updateStatsPager(statsCurrentPage, statsTotalPages);
   } catch {
@@ -881,23 +923,33 @@ function closeStatsModal() {
 
 function renderUserRows(users, offset = 0) {
   if (!users.length) {
-    statsList.innerHTML = `<p class="rounded-2xl bg-white/55 px-4 py-3 text-sm font-semibold text-[#847b6c]">最近24小时暂无用户记录</p>`;
+    const windowLabel = statsWindowLabels[statsCurrentWindow] || "24小时";
+    statsList.innerHTML = `<p class="rounded-2xl bg-white/55 px-4 py-3 text-sm font-semibold text-[#847b6c]">近${escapeHtml(windowLabel)}暂无访问记录</p>`;
     return;
   }
 
   statsList.innerHTML = users.map((user, index) => {
     const time = formatVisitTime(user.lastOperationTime);
+    const visitCount = user.visitCount ?? user.visitCount24h ?? user.visitCount7d ?? user.visitCount4w ?? 0;
+    const device = getDeviceLabel(user.device);
     return `
       <article class="rounded-2xl border border-white/70 bg-white/55 px-4 py-3 text-left">
         <div class="flex items-center justify-between gap-3">
           <p class="text-sm font-extrabold text-[#181714]">#${offset + index + 1} ${escapeHtml(user.ip || "未知 IP")}</p>
-          <p class="shrink-0 text-xs font-semibold text-[#847b6c]">${escapeHtml(user.visitCount24h ?? 0)} 次</p>
+          <p class="shrink-0 text-xs font-semibold text-[#847b6c]">${escapeHtml(visitCount)} 次</p>
         </div>
         <p class="mt-1 text-sm font-semibold text-[#847b6c]">${escapeHtml(user.region || "未知地区")}</p>
-        <p class="mt-1 text-xs font-semibold text-[#847b6c]/80">最后操作 ${escapeHtml(time)}</p>
+        <p class="mt-1 text-xs font-semibold text-[#847b6c]/80">${escapeHtml(device)}</p>
+        <p class="mt-1 text-xs font-semibold text-[#847b6c]/80">最后访问 ${escapeHtml(time)}</p>
       </article>
     `;
   }).join("");
+}
+
+function updateStatsWindowButtons() {
+  statsWindowButtons.forEach((button) => {
+    button.dataset.active = button.dataset.window === statsCurrentWindow ? "true" : "false";
+  });
 }
 
 function updateStatsPager(page, totalPages) {
@@ -915,6 +967,12 @@ function formatVisitTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function getDeviceLabel(device) {
+  if (device && typeof device === "object" && device.label) return device.label;
+  if (typeof device === "string" && device) return device;
+  return "未知设备";
 }
 
 function escapeHtml(value) {
