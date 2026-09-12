@@ -15,7 +15,6 @@ const receiveManualButton = document.getElementById("receive-manual-button");
 const manualToSendButton = document.getElementById("manual-to-send-button");
 const decryptButton = document.getElementById("decrypt-button");
 const copyButton = document.getElementById("copy-button");
-const copyNotice = document.getElementById("copy-notice");
 const receiveState = document.getElementById("receive-state");
 const manualState = document.getElementById("manual-state");
 const decryptedCard = document.getElementById("decrypted-card");
@@ -43,7 +42,6 @@ let countdownTimer = null;
 let manualCountdownTimer = null;
 let manualCheckId = 0;
 let decryptedText = "";
-let hasShownCopyNotice = false;
 let decryptedKind = "text";
 let walletDetection = null;
 let manualPayload = null;
@@ -78,7 +76,6 @@ function bootstrap() {
   sendButton.addEventListener("click", handleSend);
   decryptButton.addEventListener("click", handleManualDecrypt);
   copyButton.addEventListener("click", handleCopy);
-  document.getElementById("copy-notice-close").addEventListener("click", () => copyNotice.close());
   openLinkButton.addEventListener("click", handleOpenLink);
   manualEntryButton.addEventListener("click", () => showManualView());
   receiveManualButton.addEventListener("click", () => showManualView());
@@ -283,12 +280,11 @@ async function decryptCode(code) {
 
 async function showDecryptedResult(result) {
   decryptedText = result.text;
-  hasShownCopyNotice = false;
   walletDetection = detectWalletAddressSafe(decryptedText);
   decryptedKind = detectTextKind(decryptedText, walletDetection);
   updateLinkButton();
   updateSubscriptionHelp();
-  setReceiveMessage("点击复制到本地剪贴板");
+  setReceiveMessage("一次性链接，关闭后无法再次打开。");
   showReceiveView();
   await renderDecryptedText(getDisplayText());
   updateCopyButtonState(true);
@@ -306,13 +302,9 @@ async function handleCopy() {
   }
 
   const copied = await copyText(decryptedText);
-  setReceiveMessage(copied ? "已复制到本地剪贴板" : "复制失败，请长按页面手动复制", !copied);
+  setReceiveMessage(copied ? "已保存到剪贴板，请妥善保存" : "复制失败，请长按页面手动复制", !copied, copied);
   if (copied) {
     pulseReceiveMessage();
-    if (!hasShownCopyNotice) {
-      hasShownCopyNotice = true;
-      copyNotice.showModal();
-    }
   }
 }
 
@@ -822,11 +814,12 @@ function setCodeCellsValid(isValid) {
   });
 }
 
-function setReceiveMessage(message, isError = false) {
+function setReceiveMessage(message, isError = false, isSuccess = false) {
   receiveState.classList.remove("copy-feedback");
   receiveState.textContent = message;
   receiveState.classList.toggle("text-[#b5472f]", isError);
-  receiveState.classList.toggle("text-[#847b6c]", !isError);
+  receiveState.classList.toggle("text-[#847b6c]", !isError && !isSuccess);
+  receiveState.classList.toggle("text-[#49613d]", !isError && isSuccess);
 }
 
 function pulseReceiveMessage() {
