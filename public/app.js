@@ -303,9 +303,6 @@ async function handleCopy() {
 
   const copied = await copyText(decryptedText);
   setReceiveMessage(copied ? "已保存到剪贴板，请妥善保存" : "复制失败，请长按页面手动复制", !copied, copied);
-  if (copied) {
-    pulseReceiveMessage();
-  }
 }
 
 function handleOpenLink() {
@@ -815,17 +812,10 @@ function setCodeCellsValid(isValid) {
 }
 
 function setReceiveMessage(message, isError = false, isSuccess = false) {
-  receiveState.classList.remove("copy-feedback");
   receiveState.textContent = message;
   receiveState.classList.toggle("text-[#b5472f]", isError);
   receiveState.classList.toggle("text-[#847b6c]", !isError && !isSuccess);
   receiveState.classList.toggle("text-[#49613d]", !isError && isSuccess);
-}
-
-function pulseReceiveMessage() {
-  receiveState.classList.remove("copy-feedback");
-  void receiveState.offsetWidth;
-  receiveState.classList.add("copy-feedback");
 }
 
 function setManualMessage(message, isError = false) {
