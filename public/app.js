@@ -396,17 +396,12 @@ function getSubscriptionHelp() {
     return {
       title: "iPhone / iPad 订阅链接【使用说明】：",
       steps: [
-        "1. 点击“复制”，打开Shadowrocket",
-        "2. 系统弹窗（如果有），点“允许粘贴”",
-        "3. 点右上角“加号（+）”",
-        {
-          text: "4. 添加（或确认）以下2项设置：",
-          items: [
-            "类型是Subscribe",
-            "URL是：“https://bulusi.947sh.xyz...”",
-          ],
-        },
-        "5. 点击“保存”",
+        "1. 点击本页“复制”，打开 Jamjams",
+        "2. 进入“Servers”（服务器）页面，点右上角“＋”",
+        "3. 在“Add Servers”中选择“Subscription URL”",
+        "4. 粘贴刚复制的内容，完成导入；如提示粘贴权限，选择“允许粘贴”",
+        "5. 返回服务器列表，选择要使用的节点",
+        "6. 返回首页，开启“Proxy”；首次连接时，允许添加 VPN 配置",
       ],
     };
   }
