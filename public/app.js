@@ -330,6 +330,8 @@ function updateLinkButton() {
 
 function updateSubscriptionHelp() {
   const help = getTypeHelp();
+  document.getElementById("ios-client-picker").classList.toggle("hidden", !isBulusiSubscriptionUrl(decryptedText) || getDeviceFamily() !== "iphone");
+  document.getElementById("ios-client").onchange = updateSubscriptionHelp;
   subscriptionHelp.classList.toggle("hidden", !help);
   if (!help) {
     subscriptionHelpTitle.textContent = "";
@@ -393,15 +395,27 @@ function getSubscriptionHelp() {
   if (!isBulusiSubscriptionUrl(decryptedText)) return null;
   const device = getDeviceFamily();
   if (device === "iphone") {
+    if (document.getElementById("ios-client").value === "shadowrocket") {
+      return {
+        title: "iPhone / iPad · Shadowrocket 使用说明：",
+        steps: [
+          "1. 点击本页“复制”，打开 Shadowrocket。",
+          "2. 如出现粘贴权限提示，选择“允许粘贴”。",
+          "3. 点击右上角“＋”，类型选择“Subscribe”（订阅）。",
+          "4. 在 URL 中粘贴刚复制的内容，点击“保存”。",
+          "5. 返回首页，选择一个节点，开启连接。",
+        ],
+      };
+    }
     return {
-      title: "iPhone / iPad 订阅链接【使用说明】：",
+      title: "iPhone / iPad · Jamjams 使用说明：",
       steps: [
-        "1. 点击本页“复制”，打开 Jamjams",
-        "2. 进入“Servers”（服务器）页面，点右上角“＋”",
-        "3. 在“Add Servers”中选择“Subscription URL”",
-        "4. 粘贴刚复制的内容，完成导入；如提示粘贴权限，选择“允许粘贴”",
-        "5. 返回服务器列表，选择要使用的节点",
-        "6. 返回首页，开启“Proxy”；首次连接时，允许添加 VPN 配置",
+        "1. 点击本页“复制”，打开 Jamjams。",
+        "2. 进入“Servers”（服务器），点“＋ Addservers”。",
+        "3. 选择“Subscription URL”（订阅地址）。",
+        "4. 粘贴刚复制的内容，完成导入。",
+        "5. 返回服务器列表，选择一个节点。",
+        "6. 返回首页，开启“Proxy”。",
       ],
     };
   }
